@@ -23,8 +23,6 @@ REPO_URL = "https://github.com/B0D1KG0/print-presence"
 
 # (section, key, label, hint, secret)
 FIELDS = [
-    ("discord", "client_id", "Discord Application ID",
-     "discord.com/developers → твоё приложение → General Information → Application ID", False),
     ("printer", "name", "Имя в Discord",
      "Так будет написано в профиле: «Играет в …»", False),
     ("printer", "host", "IP принтера",
@@ -33,6 +31,8 @@ FIELDS = [
      "Там же: Настройки → WLAN → Access Code (8 символов)", True),
     ("printer", "serial", "Серийный номер",
      "Bambu Studio → Устройство → Обновление (Serial), или в настройках принтера", False),
+    ("discord", "client_id", "Своё Discord-приложение",
+     "Необязательно. Оставь пустым — будет общее приложение Print Presence", False),
 ]
 
 

@@ -52,3 +52,11 @@ def test_calibration_job_is_renamed():
     assert s.calibration
     a = build_activity(s, "P1S", "ru")
     assert a["state"] == "Калибровка"
+
+
+def test_client_id_falls_back_to_default(monkeypatch):
+    from print_presence import presence
+    monkeypatch.setattr(presence, "DEFAULT_CLIENT_ID", "111")
+    assert presence.client_id_from({"discord": {"client_id": " "}}) == "111"
+    assert presence.client_id_from({"discord": {"client_id": "222"}}) == "222"
+    assert presence.client_id_from({}) == "111"

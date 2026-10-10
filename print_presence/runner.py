@@ -6,7 +6,7 @@ import logging
 import threading
 from typing import Any, Callable
 
-from .presence import DiscordPresence, build_activity
+from .presence import DiscordPresence, build_activity, client_id_from
 from .printers import create_printer
 from .status import PrinterStatus, State
 
@@ -20,7 +20,7 @@ StatusCallback = Callable[[PrinterStatus, bool], None]
 
 def validate(cfg: dict[str, Any]) -> None:
     """Raise ValueError with a human-readable message if settings are incomplete."""
-    if not str(cfg.get("discord", {}).get("client_id", "")).strip():
+    if not client_id_from(cfg):
         raise ValueError("Не указан Discord Application ID")
     create_printer(cfg.get("printer", {}))  # validates printer fields
 
@@ -65,7 +65,7 @@ class Runner:
         interval = max(MIN_INTERVAL_S, int(opts.get("update_interval", MIN_INTERVAL_S)))
 
         printer = create_printer(cfg.get("printer", {}))
-        discord = DiscordPresence(str(cfg["discord"]["client_id"]).strip())
+        discord = DiscordPresence(client_id_from(cfg))
         printer.start()
         try:
             # First update after a short pause so the printer has time to answer.

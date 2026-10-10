@@ -13,6 +13,14 @@ from .status import PrinterStatus, State
 
 log = logging.getLogger(__name__)
 
+# Shared "Print Presence" Discord application with the art assets already uploaded.
+# Application IDs are public, so it's fine to ship it. Users can override it in settings.
+DEFAULT_CLIENT_ID = ""
+
+
+def client_id_from(cfg: dict[str, Any]) -> str:
+    return str(cfg.get("discord", {}).get("client_id", "")).strip() or DEFAULT_CLIENT_ID
+
 TEXTS = {
     "ru": {
         State.IDLE: "Простаивает",
