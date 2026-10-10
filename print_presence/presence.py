@@ -15,11 +15,16 @@ log = logging.getLogger(__name__)
 
 # Shared "Print Presence" Discord application with the art assets already uploaded.
 # Application IDs are public, so it's fine to ship it. Users can override it in settings.
-DEFAULT_CLIENT_ID = ""
+DEFAULT_CLIENT_ID = "700742403417702491"
 
 
 def client_id_from(cfg: dict[str, Any]) -> str:
-    return str(cfg.get("discord", {}).get("client_id", "")).strip() or DEFAULT_CLIENT_ID
+    """Shared app unless the user switched to their own; empty string if their own ID is missing."""
+    discord = cfg.get("discord", {})
+    custom = str(discord.get("client_id", "")).strip()
+    if discord.get("use_default", not custom):
+        return DEFAULT_CLIENT_ID
+    return custom
 
 TEXTS = {
     "ru": {

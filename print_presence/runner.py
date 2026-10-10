@@ -21,7 +21,7 @@ StatusCallback = Callable[[PrinterStatus, bool], None]
 def validate(cfg: dict[str, Any]) -> None:
     """Raise ValueError with a human-readable message if settings are incomplete."""
     if not client_id_from(cfg):
-        raise ValueError("Не указан Discord Application ID")
+        raise ValueError("Укажи Application ID своего Discord-приложения или включи стандартное оформление")
     create_printer(cfg.get("printer", {}))  # validates printer fields
 
 

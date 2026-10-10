@@ -58,5 +58,10 @@ def test_client_id_falls_back_to_default(monkeypatch):
     from print_presence import presence
     monkeypatch.setattr(presence, "DEFAULT_CLIENT_ID", "111")
     assert presence.client_id_from({"discord": {"client_id": " "}}) == "111"
-    assert presence.client_id_from({"discord": {"client_id": "222"}}) == "222"
     assert presence.client_id_from({}) == "111"
+    # config.toml without the switch: an own ID wins
+    assert presence.client_id_from({"discord": {"client_id": "222"}}) == "222"
+    # GUI switch
+    assert presence.client_id_from({"discord": {"use_default": True, "client_id": "222"}}) == "111"
+    assert presence.client_id_from({"discord": {"use_default": False, "client_id": "222"}}) == "222"
+    assert presence.client_id_from({"discord": {"use_default": False, "client_id": ""}}) == ""

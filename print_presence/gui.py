@@ -7,6 +7,7 @@ import queue
 import sys
 import tkinter as tk
 import webbrowser
+from urllib.parse import quote
 from pathlib import Path
 from tkinter import messagebox, ttk
 from typing import Any
@@ -18,7 +19,6 @@ from .status import PrinterStatus, State
 
 log = logging.getLogger("print_presence")
 
-DEV_PORTAL = "https://discord.com/developers/applications"
 REPO_URL = "https://github.com/B0D1KG0/print-presence"
 
 # (section, key, label, hint, secret)
@@ -31,9 +31,8 @@ FIELDS = [
      "Там же: Настройки → WLAN → Access Code (8 символов)", True),
     ("printer", "serial", "Серийный номер",
      "Bambu Studio → Устройство → Обновление (Serial), или в настройках принтера", False),
-    ("discord", "client_id", "Своё Discord-приложение",
-     "Необязательно. Оставь пустым — будет общее приложение Print Presence", False),
 ]
+CUSTOM_APP_HELP = REPO_URL + "#" + quote("своё-discord-приложение-необязательно")
 
 
 def resource(name: str) -> Path:
@@ -104,13 +103,12 @@ class App:
                 self.show_secret = tk.BooleanVar(value=False)
                 ttk.Checkbutton(frm, text="показать", variable=self.show_secret,
                                 command=self._toggle_secret).grid(row=row, column=2, padx=(8, 0), pady=(8, 0))
-            if key == "client_id":
-                ttk.Button(frm, text="Открыть", command=lambda: webbrowser.open(DEV_PORTAL)).grid(
-                    row=row, column=2, padx=(8, 0), pady=(8, 0))
             row += 1
             ttk.Label(frm, text=hint, foreground="#6b7280", font=("Segoe UI", 8)).grid(
                 row=row, column=1, columnspan=2, sticky="w", padx=(12, 0))
             row += 1
+
+        row = self._build_discord(frm, row)
 
         opts = ttk.Frame(frm)
         opts.grid(row=row, column=0, columnspan=3, sticky="w", pady=(14, 0))
@@ -146,6 +144,34 @@ class App:
 
         self.inputs = [w for w in frm.winfo_children() if isinstance(w, (ttk.Entry,))]
 
+    def _build_discord(self, frm: ttk.Frame, row: int) -> int:
+        discord = self.cfg.get("discord", {})
+        custom = str(discord.get("client_id", ""))
+        self.use_default = tk.BooleanVar(value=bool(discord.get("use_default", not custom)))
+        ttk.Checkbutton(frm, text="Стандартное оформление Print Presence (иконки уже готовы)",
+                        variable=self.use_default, command=self._update_client_state).grid(
+            row=row, column=0, columnspan=3, sticky="w", pady=(16, 0))
+        row += 1
+
+        self.client_id = tk.StringVar(value=custom)
+        ttk.Label(frm, text="Своё Application ID", font=("Segoe UI", 10, "bold")).grid(
+            row=row, column=0, sticky="w", pady=(8, 0))
+        self.client_entry = ttk.Entry(frm, textvariable=self.client_id, width=42)
+        self.client_entry.grid(row=row, column=1, sticky="ew", padx=(12, 0), pady=(8, 0))
+        self.client_help = ttk.Button(frm, text="Инструкция", command=lambda: webbrowser.open(CUSTOM_APP_HELP))
+        self.client_help.grid(row=row, column=2, padx=(8, 0), pady=(8, 0))
+        row += 1
+        ttk.Label(frm, text="Только если хочешь свои иконки и название — выключи галочку выше",
+                  foreground="#6b7280", font=("Segoe UI", 8)).grid(
+            row=row, column=1, columnspan=2, sticky="w", padx=(12, 0))
+        self._update_client_state()
+        return row + 1
+
+    def _update_client_state(self) -> None:
+        running = self.runner is not None and self.runner.running
+        own = not self.use_default.get() and not running
+        self.client_entry.configure(state="normal" if own else "disabled")
+
     def _toggle_secret(self) -> None:
         self.secret_entry.configure(show="" if self.show_secret.get() else "•")
 
@@ -153,6 +179,8 @@ class App:
         cfg = self.cfg
         for (section, key), var in self.vars.items():
             cfg.setdefault(section, {})[key] = var.get().strip()
+        cfg.setdefault("discord", {})["use_default"] = self.use_default.get()
+        cfg["discord"]["client_id"] = self.client_id.get().strip()
         cfg["presence"]["show_when_idle"] = self.show_idle.get()
         cfg["presence"]["language"] = self.lang.get()
         cfg["app"]["autostart"] = self.autostart.get()
@@ -160,7 +188,12 @@ class App:
 
     def _set_inputs_enabled(self, enabled: bool) -> None:
         for w in self.inputs:
-            w.configure(state="normal" if enabled else "disabled")
+            if w is not self.client_entry:
+                w.configure(state="normal" if enabled else "disabled")
+        if enabled:
+            self._update_client_state()
+        else:
+            self.client_entry.configure(state="disabled")
 
     # Actions ---------------------------------------------------------------
 

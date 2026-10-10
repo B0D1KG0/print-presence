@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 DEFAULTS: dict[str, Any] = {
-    "discord": {"client_id": ""},
+    "discord": {"use_default": True, "client_id": ""},
     "printer": {"type": "bambu", "name": "Bambu Lab P1S", "host": "", "access_code": "", "serial": ""},
     "presence": {"language": "ru", "show_when_idle": True},
     "app": {"autostart": False},

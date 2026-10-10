@@ -2,7 +2,8 @@
 # config.toml не попадает в git — там лежит Access Code принтера.
 
 [discord]
-# Developer Portal -> твоё приложение -> General Information -> Application ID
+# Необязательно: пусто = стандартное приложение Print Presence с готовыми иконками.
+# Своё: Developer Portal -> твоё приложение -> General Information -> Application ID
 client_id = ""
 
 [printer]
