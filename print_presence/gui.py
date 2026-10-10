@@ -17,7 +17,7 @@ from PIL import Image, ImageDraw
 
 from . import __version__, settings
 from .presence import build_activity
-from .printers.bambu_discovery import FoundPrinter, discover, display_name
+from .printers.bambu_discovery import FoundPrinter, discover, display_name, image_key
 from .runner import Runner, validate
 from .status import PrinterStatus, State
 
@@ -84,18 +84,23 @@ class PreviewArt:
     """Builds the Discord-style large image with the small status badge."""
 
     def __init__(self) -> None:
-        self.cache: dict[str, ctk.CTkImage] = {}
-        try:
-            self.large = Image.open(resource("assets/printer.png")).convert("RGBA")
-        except OSError:
-            self.large = Image.new("RGBA", (512, 512), CARD_2)
+        self.cache: dict[tuple[str, str], ctk.CTkImage] = {}
+        self.large = self._load("printer")
 
-    def get(self, badge: str | None) -> ctk.CTkImage:
-        key = badge or ""
+    @staticmethod
+    def _load(name: str) -> Image.Image:
+        try:
+            return Image.open(resource(f"assets/{name}.png")).convert("RGBA")
+        except OSError:
+            return Image.new("RGBA", (512, 512), CARD_2)
+
+    def get(self, badge: str | None, model_image: str = "printer") -> ctk.CTkImage:
+        key = (model_image, badge or "")
         if key not in self.cache:
+            large = self._load(model_image)
             size, pad = 240, 30
             img = Image.new("RGBA", (size + pad, size + pad), (0, 0, 0, 0))
-            img.paste(self.large.resize((size, size), Image.LANCZOS), (0, 0))
+            img.paste(large.resize((size, size), Image.LANCZOS), (0, 0))
             if badge:
                 try:
                     small = Image.open(resource(f"assets/{badge}.png")).convert("RGBA").resize(
@@ -382,6 +387,9 @@ class App:
             serial = self.f_serial.get()
         return display_name(self.cfg["printer"].get("model_code"), serial)
 
+    def _model_image(self) -> str:
+        return image_key(self.cfg["printer"].get("model_code"), self.f_serial.get())
+
     def _lang_code(self) -> str:
         return "en" if self.lang.get() == "English" else "ru"
 
@@ -503,13 +511,13 @@ class App:
         activity = build_activity(status, name, self._lang_code()) if status else None
         self.pv_title.configure(text=name)
         if activity is None:
-            self.pv_image.configure(image=self.art.get(None))
+            self.pv_image.configure(image=self.art.get(None, self._model_image()))
             self.pv_details.configure(text="Нажми «Запустить» внизу" if status is None
                                       else "Статус скрыт — принтер не на связи")
             self.pv_state.configure(text="")
             self.pv_time.configure(text="")
             return
-        self.pv_image.configure(image=self.art.get(activity.get("small_image")))
+        self.pv_image.configure(image=self.art.get(activity.get("small_image"), self._model_image()))
         self.pv_details.configure(text=activity["details"].strip())
         self.pv_state.configure(text=activity.get("state", "").strip())
         left = status.remaining_min if activity.get("end") else None

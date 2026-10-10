@@ -68,6 +68,21 @@ def model_name(model_code: str | None = None, serial: str | None = None) -> str 
     return None
 
 
+# Discord art asset per model family (files in assets/, uploaded to the shared Discord app).
+MODEL_IMAGES = {
+    "X1C": "printer_x1", "X1": "printer_x1", "X1E": "printer_x1",
+    "P1S": "printer_p1s", "P2S": "printer_p1s",
+    "P1P": "printer_p1p",
+    "A1": "printer_a1",
+    "A1 mini": "printer_a1mini",
+    "H2D": "printer_h2d", "H2D Pro": "printer_h2d", "H2S": "printer_h2d",
+}
+
+
+def image_key(model_code: str | None = None, serial: str | None = None) -> str:
+    return MODEL_IMAGES.get(model_name(model_code, serial) or "", "printer")
+
+
 def display_name(model_code: str | None = None, serial: str | None = None) -> str:
     model = model_name(model_code, serial)
     return f"Bambu Lab {model}" if model else "Bambu Lab"

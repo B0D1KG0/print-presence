@@ -6,7 +6,7 @@ import logging
 import threading
 from typing import Any, Callable
 
-from .presence import DiscordPresence, build_activity, client_id_from
+from .presence import DEFAULT_CLIENT_ID, DiscordPresence, build_activity, client_id_from
 from .printers import create_printer
 from .status import PrinterStatus, State
 
@@ -65,7 +65,15 @@ class Runner:
         interval = max(MIN_INTERVAL_S, int(opts.get("update_interval", MIN_INTERVAL_S)))
 
         printer = create_printer(cfg.get("printer", {}))
-        discord = DiscordPresence(client_id_from(cfg))
+        client_id = client_id_from(cfg)
+        discord = DiscordPresence(client_id)
+        large_image = "printer"
+        if client_id == DEFAULT_CLIENT_ID and cfg.get("printer", {}).get("type", "bambu") == "bambu":
+            # The shared app has a picture per model; custom apps are only required to have "printer".
+            from .printers.bambu_discovery import image_key
+
+            p = cfg.get("printer", {})
+            large_image = image_key(p.get("model_code"), p.get("serial"))
         printer.start()
         try:
             # First update after a short pause so the printer has time to answer.
@@ -75,7 +83,7 @@ class Runner:
                 status = printer.status()
                 activity = None
                 if status.state != State.IDLE or show_idle:
-                    activity = build_activity(status, printer.name, lang)
+                    activity = build_activity(status, printer.name, lang, large_image=large_image)
                 discord.set(activity)
                 if self.on_status:
                     self.on_status(status, discord.connected)

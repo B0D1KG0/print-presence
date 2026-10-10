@@ -73,7 +73,11 @@ def _clip(text: str) -> str:
 
 
 def build_activity(
-    status: PrinterStatus, printer_name: str, lang: str = "ru", now: float | None = None
+    status: PrinterStatus,
+    printer_name: str,
+    lang: str = "ru",
+    now: float | None = None,
+    large_image: str = "printer",
 ) -> dict[str, Any] | None:
     """Return pypresence.update() kwargs, or None to clear the presence."""
     if status.state == State.OFFLINE:
@@ -106,7 +110,7 @@ def build_activity(
     activity: dict[str, Any] = {
         "name": printer_name,
         "details": _clip(details),
-        "large_image": "printer",
+        "large_image": large_image,
         "large_text": printer_name,
         "small_image": SMALL_IMAGES[status.state],
         "small_text": " · ".join(temps) or t[status.state],

@@ -51,6 +51,9 @@ Discord Rich Presence для 3D-принтеров: друзья в Discord ви
    | `failed` | значок «ошибка» |
    | `idle` | значок «простой» |
 
+   Необязательно — картинка под каждую модель (если их нет, будет `printer`):
+   `printer_x1` (X1C/X1/X1E), `printer_p1s` (P1S/P2S), `printer_p1p`, `printer_a1`, `printer_a1mini`, `printer_h2d` (H2D/H2S).
+
    После загрузки Discord иногда показывает картинки только через 5–10 минут.
 5. В программе сними галочку **«Стандартное оформление Print Presence»** и вставь Application ID в поле **«Своё Application ID»**.
 

@@ -58,3 +58,13 @@ def test_discover_receives_announcement():
     if not found:
         pytest.skip("UDP 2021 is taken by another program (e.g. Bambu Studio)")
     assert [p.serial for p in found] == ["01P00C000000001"]
+
+
+def test_image_key_per_model():
+    from print_presence.printers.bambu_discovery import image_key
+    assert image_key("C12") == "printer_p1s"
+    assert image_key(None, "01P00C000000001") == "printer_p1s"
+    assert image_key("3DPrinter-X1-Carbon") == "printer_x1"
+    assert image_key("N1") == "printer_a1mini"
+    assert image_key("O1D") == "printer_h2d"
+    assert image_key("???") == "printer"
