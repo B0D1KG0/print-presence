@@ -43,7 +43,9 @@ jobs:
           pyinstaller --noconfirm --onefile --windowed
           --name PrintPresence
           --icon assets/app.ico
-          --add-data "assets/printer.png:assets"
+          --add-data "assets:assets"
+          --collect-data customtkinter
+          --hidden-import PIL._tkinter_finder
           run_gui.py
 
       - uses: actions/upload-artifact@v4

@@ -7,9 +7,12 @@ from .base import Printer
 
 def create_printer(cfg: dict[str, Any]) -> Printer:
     kind = cfg.get("type", "bambu")
-    name = cfg.get("name", "3D Printer")
     if kind == "bambu":
         from .bambu import BambuPrinter
+        from .bambu_discovery import display_name
+
+        # Empty name = derive it from the model, e.g. "Bambu Lab P1S".
+        name = str(cfg.get("name", "")).strip() or display_name(cfg.get("model_code"), cfg.get("serial"))
 
         for key in ("host", "serial", "access_code"):
             if not cfg.get(key):
