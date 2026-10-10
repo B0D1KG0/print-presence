@@ -27,7 +27,7 @@ Discord Rich Presence для 3D-принтеров: друзья в Discord ви
 1. Открой <https://discord.com/developers/applications> → **New Application**.
 2. Имя приложения — это то, что видно после «Играет в», например `Bambu Lab P1S`.
 3. На странице **General Information** скопируй **Application ID**.
-4. **Rich Presence → Art Assets** — загрузи картинки (минимум 512×512) с такими именами:
+4. **Rich Presence → Art Assets** — загрузи картинки из папки `assets/` (512×512). Имя ассета = имя файла без `.png`:
 
    | Имя ассета | Что это |
    |---|---|
