@@ -21,7 +21,7 @@ Discord Rich Presence для 3D-принтеров: друзья в Discord ви
 
 ## Установка
 
-1. Скачай `PrintPresence.exe` со страницы [Releases](../../releases/latest).
+1. Скачай `PrintPresence.exe` со страницы [Releases](../../releases/latest) (или собери сам: `build.bat`, см. ниже).
 2. Запусти. Windows может показать «Windows защитила ваш компьютер» — это потому, что программа не подписана сертификатом: нажми **Подробнее → Выполнить в любом случае**.
 3. Заполни поля в окне (под каждым полем написано, где взять значение) и нажми **▶ Запустить**.
 
@@ -71,7 +71,8 @@ python run_gui.py               # окно
 python -m print_presence -v     # консольная версия, читает config.toml (см. config.example.toml)
 ```
 
-Релиз: поменяй `__version__` в `print_presence/__init__.py` и запушь в `main` — GitHub Actions соберёт `PrintPresence.exe`, создаст тег `v<версия>` и релиз.
+Собрать `.exe` у себя: запусти `build.bat` — он установит всё нужное и положит программу в `dist\PrintPresence.exe`.
+Релиз: GitHub → Releases → **Draft a new release** → тег `v<версия>` → прикрепи `PrintPresence.exe`.
 
 Добавить новый принтер: создай класс-наследник `Printer` в `print_presence/printers/`, который возвращает `PrinterStatus`, и зарегистрируй его в `printers/__init__.py`.
 

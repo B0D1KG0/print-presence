@@ -1,12 +1,8 @@
 name: Build Windows exe
 
-# A release is published automatically when __version__ in print_presence/__init__.py
-# changes on main (the v<version> tag is created by the release step).
-# Can also be started by hand from the Actions tab.
+# Started by hand from the Actions tab: builds the exe and publishes release
+# v<__version__> if it doesn't exist yet. Locally use build.bat instead.
 on:
-  push:
-    branches: [main]
-    paths: ["print_presence/__init__.py"]
   workflow_dispatch:
 
 permissions:
