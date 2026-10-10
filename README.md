@@ -31,7 +31,7 @@ Supports **Bambu Lab** printers (tested on P1S) over the local network. Other pr
 
 ## Install
 
-1. Download `PrintPresence.exe` from [Releases](../../releases/latest) (or build it yourself, see below).
+1. Download `PrintPresence.exe` from [Releases](https://github.com/B0D1KG0/print-presence/releases) (or build it yourself, see below).
 2. Run it. Windows may say "Windows protected your PC" because the app isn't code-signed: click **More info → Run anyway**.
 3. On first launch the app looks for printers on your network and fills in the **IP, serial number and model**. If Windows asks about the firewall, allow access on private networks — otherwise discovery can't work.
 4. Enter the **Access Code** (the printer doesn't announce it: printer screen → Settings → WLAN) and press **▶ Start**.
