@@ -6,6 +6,7 @@ import logging
 import threading
 from typing import Any, Callable
 
+from .i18n import resolve, tr
 from .presence import DEFAULT_CLIENT_ID, DiscordPresence, build_activity, client_id_from
 from .printers import create_printer
 from .status import PrinterStatus, State
@@ -21,7 +22,7 @@ StatusCallback = Callable[[PrinterStatus, bool], None]
 def validate(cfg: dict[str, Any]) -> None:
     """Raise ValueError with a human-readable message if settings are incomplete."""
     if not client_id_from(cfg):
-        raise ValueError("Укажи Application ID своего Discord-приложения или включи стандартное оформление")
+        raise ValueError(tr("err.client_id"))
     create_printer(cfg.get("printer", {}))  # validates printer fields
 
 
@@ -55,12 +56,12 @@ class Runner:
         try:
             self._loop()
         except Exception:
-            log.exception("Непредвиденная ошибка")
+            log.exception(tr("log.unexpected"))
 
     def _loop(self) -> None:
         cfg = self.cfg
         opts = cfg.get("presence", {})
-        lang = opts.get("language", "ru")
+        lang = resolve(opts.get("language", "auto"))
         show_idle = opts.get("show_when_idle", True)
         interval = max(MIN_INTERVAL_S, int(opts.get("update_interval", MIN_INTERVAL_S)))
 
@@ -90,4 +91,4 @@ class Runner:
         finally:
             discord.close()
             printer.stop()
-            log.info("Остановлено")
+            log.info(tr("log.stopped"))

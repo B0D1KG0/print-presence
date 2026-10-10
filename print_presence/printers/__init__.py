@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from ..i18n import tr
 from .base import Printer
 
 
@@ -16,6 +17,6 @@ def create_printer(cfg: dict[str, Any]) -> Printer:
 
         for key in ("host", "serial", "access_code"):
             if not cfg.get(key):
-                raise ValueError(f"[printer] {key} is not set in config.toml")
+                raise ValueError(tr("err.missing", field=tr(f"field.{key}")))
         return BambuPrinter(name, cfg["host"], cfg["serial"], cfg["access_code"])
     raise ValueError(f"Unknown printer type: {kind!r}")

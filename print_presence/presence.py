@@ -9,6 +9,7 @@ from typing import Any
 from pypresence import Presence
 from pypresence.exceptions import PyPresenceException
 
+from .i18n import tr
 from .status import PrinterStatus, State
 
 log = logging.getLogger(__name__)
@@ -125,7 +126,7 @@ def build_activity(
 
 def _summary(activity: dict[str, Any] | None) -> str:
     if not activity:
-        return "скрыт"
+        return tr("log.presence_hidden")
     return " · ".join(activity[k].strip() for k in ("details", "state") if activity.get(k))
 
 
@@ -151,16 +152,16 @@ class DiscordPresence:
             rpc = Presence(self.client_id)
             rpc.connect()
         except Exception as e:  # pypresence raises a zoo of errors when Discord is closed
-            log.warning("Discord недоступен (%s), повтор через 30 с", e)
+            log.warning(tr("log.discord_unavailable", error=e))
             self._next_connect = time.monotonic() + 30
             return False
-        log.info("Подключено к Discord")
+        log.info(tr("log.discord_connected"))
         self._rpc = rpc
         self._last = None
         return True
 
     def _drop(self, error: Exception) -> None:
-        log.warning("Связь с Discord потеряна: %s", error)
+        log.warning(tr("log.discord_lost", error=error))
         try:
             if self._rpc:
                 self._rpc.close()
@@ -181,7 +182,7 @@ class DiscordPresence:
             self._drop(e)
             return
         self._last = activity
-        log.info("Статус в Discord: %s", _summary(activity))
+        log.info(tr("log.presence", summary=_summary(activity)))
 
     def close(self) -> None:
         if self._rpc is None:

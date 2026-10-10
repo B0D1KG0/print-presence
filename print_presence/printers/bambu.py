@@ -18,6 +18,7 @@ from typing import Any
 
 import paho.mqtt.client as mqtt
 
+from ..i18n import tr
 from ..status import PrinterStatus, State
 from .base import Printer
 
@@ -118,7 +119,7 @@ class BambuPrinter(Printer):
     # Printer API -----------------------------------------------------------
 
     def start(self) -> None:
-        log.info("Подключаюсь к %s (%s)...", self.name, self.host)
+        log.info(tr("log.connecting", name=self.name, host=self.host))
         self._client.connect_async(self.host, MQTT_PORT, keepalive=60)
         self._client.loop_start()
 
@@ -140,13 +141,9 @@ class BambuPrinter(Printer):
 
     def _on_connect(self, client, userdata, flags, reason_code, properties) -> None:
         if reason_code.is_failure:
-            log.error(
-                "Принтер отклонил подключение: %s. Проверь IP и Access Code; "
-                "если они верные — включи на принтере LAN Only + Developer Mode.",
-                reason_code,
-            )
+            log.error(tr("log.refused", reason=reason_code))
             return
-        log.info("Подключено к %s", self.name)
+        log.info(tr("log.connected", name=self.name))
         client.subscribe(f"device/{self.serial}/report")
         with self._lock:
             self._connected = True
@@ -157,7 +154,7 @@ class BambuPrinter(Printer):
             self._connected = False
             self._data = {}
         if not self._stopping:
-            log.warning("Связь с %s потеряна (%s), переподключаюсь...", self.name, reason_code)
+            log.warning(tr("log.disconnected", name=self.name, reason=reason_code))
 
     def _on_message(self, client, userdata, msg) -> None:
         try:

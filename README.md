@@ -1,89 +1,95 @@
-# print-presence
+# Print Presence
 
-Discord Rich Presence для 3D-принтеров: друзья в Discord видят, что ты печатаешь, на каком слое, сколько процентов готово и сколько осталось.
+**English** · [Русский](README.ru.md)
 
-```
-Играет в Bambu Lab P1S
-Печатает: benchy
-Слой 87/240 · 36%
-⏱ осталось 01:12:00
-```
+Discord Rich Presence for 3D printers: your friends see what you're printing, the current layer, progress and time left.
 
-Сейчас поддерживаются принтеры **Bambu Lab** (проверяется на P1S) через локальную сеть. Другие принтеры можно добавить отдельным модулем в `print_presence/printers/`.
+<p>
+  <img src="docs/home-en.png" width="380" alt="Home tab: Discord preview and print progress">
+  <img src="docs/settings-en.png" width="380" alt="Settings tab with automatic printer discovery">
+</p>
 
-> Неофициальный проект, не связан с Bambu Lab или Discord.
+Supports **Bambu Lab** printers (tested on P1S) over the local network. Other printers can be added as separate modules in `print_presence/printers/`.
 
-## Что нужно
+> Unofficial project, not affiliated with Bambu Lab or Discord.
+
+## Features
+
+- Status in Discord: printing / preparing / paused / finished / failed / idle, file name, layer `87/240`, percent, countdown to the end, nozzle and bed temperatures on hover
+- **Finds the printer on the network automatically**: IP, serial number and model — you only type the Access Code
+- Printer picture in Discord matches your model (X1, P1S, P1P, A1, A1 mini, H2D)
+- Live preview of how Discord shows you, progress bar, temperatures
+- Nothing to set up in Discord — the shared app with icons is built in
+- Works locally: talks to the printer over your LAN, no Bambu cloud, the Access Code never leaves your PC
+- English and Russian interface, picked from your system language
+
+## Requirements
 
 - Windows 10/11
-- Discord **десктоп-приложение** (в браузере Rich Presence не работает), запущенное на том же ПК
-- Принтер и ПК в одной локальной сети
+- The Discord **desktop app** (Rich Presence doesn't work in the browser) running on the same PC
+- The printer and the PC on the same local network
 
-## Установка
+## Install
 
-1. Скачай `PrintPresence.exe` со страницы [Releases](../../releases/latest) (или собери сам: `build.bat`, см. ниже).
-2. Запусти. Windows может показать «Windows защитила ваш компьютер» — это потому, что программа не подписана сертификатом: нажми **Подробнее → Выполнить в любом случае**.
-3. При первом запуске программа сама ищет принтер в сети и подставляет **IP, серийный номер и модель**. Если Windows спросит про брандмауэр — разреши доступ для частных сетей, иначе поиск не сработает.
-4. Введи **Access Code** (принтер его не сообщает: экран принтера → Настройки → WLAN) и нажми **▶ Запустить**. Discord-приложение создавать не нужно.
+1. Download `PrintPresence.exe` from [Releases](../../releases/latest) (or build it yourself, see below).
+2. Run it. Windows may say "Windows protected your PC" because the app isn't code-signed: click **More info → Run anyway**.
+3. On first launch the app looks for printers on your network and fills in the **IP, serial number and model**. If Windows asks about the firewall, allow access on private networks — otherwise discovery can't work.
+4. Enter the **Access Code** (the printer doesn't announce it: printer screen → Settings → WLAN) and press **▶ Start**.
 
-Если автопоиск не нашёл принтер (другая подсеть, VPN, закрыт брандмауэр) — IP и серийный номер можно ввести вручную.
+If discovery doesn't find the printer (different subnet, VPN, blocked by the firewall), enter the IP and serial number by hand.
 
-Настройки сохраняются в `%APPDATA%\PrintPresence\settings.json` — вводить их заново не нужно.
-Переключатель «Включать сразу при открытии программы» запускает статус без нажатия кнопки.
-Поле «Имя в Discord» можно оставить пустым — подставится модель принтера, например `Bambu Lab P1S`.
+Settings are saved to `%APPDATA%\PrintPresence\settings.json`.
+"Start automatically when the app opens" starts the status without pressing the button.
+Leave "Name in Discord" empty to show the printer model, e.g. `Bambu Lab P1S`.
 
-## Своё Discord-приложение (необязательно)
+## Own Discord application (optional)
 
-По умолчанию программа использует стандартное приложение Print Presence — иконки уже загружены, ничего делать не нужно.
-Своё приложение нужно, только если хочешь свои иконки или своё название после «Играет в».
+By default the app uses the shared Print Presence application — icons are already uploaded, nothing to do.
+You only need your own app for your own icons or your own name after "Playing".
 
-1. Открой <https://discord.com/developers/applications> → **New Application**.
-2. Имя приложения — это то, что видно после «Играет в», например `Bambu Lab P1S`.
-3. На странице **General Information** скопируй **Application ID**.
-4. **Rich Presence → Art Assets** — загрузи картинки (512×512, можно взять из папки [`assets/`](assets) и поменять). Имя ассета = имя файла без `.png`:
+1. Open <https://discord.com/developers/applications> → **New Application**.
+2. The application name is what shows after "Playing", e.g. `Bambu Lab P1S`.
+3. On **General Information** copy the **Application ID**.
+4. **Rich Presence → Art Assets**: upload images (at least 512×512, you can start from [`assets/`](assets)). The asset name is the file name without `.png`:
 
-   | Имя ассета | Что это |
+   | Asset name | What it is |
    |---|---|
-   | `printer` | большая картинка — принтер |
-   | `printing` | значок «печатает» |
-   | `paused` | значок «пауза» |
-   | `finished` | значок «готово» |
-   | `failed` | значок «ошибка» |
-   | `idle` | значок «простой» |
+   | `printer` | large image — the printer |
+   | `printing` | "printing" badge |
+   | `paused` | "paused" badge |
+   | `finished` | "finished" badge |
+   | `failed` | "failed" badge |
+   | `idle` | "idle" badge |
 
-   После загрузки Discord иногда показывает картинки только через 5–10 минут.
-5. В программе сними галочку **«Стандартное оформление Print Presence»** и вставь Application ID в поле **«Своё Application ID»**.
+   Discord sometimes takes 5–10 minutes to show newly uploaded images.
+5. In the app, turn off **Standard design** and paste the Application ID into **Own Application ID**.
 
-## Где взять данные принтера (Bambu Lab)
+## Troubleshooting
 
-- **IP и Access Code**: на экране принтера *Настройки → WLAN*.
-- **Серийный номер**: Bambu Studio → *Устройство* → *Обновление*, или в настройках принтера.
+- **"Printer refused the connection" / "Not authorized"**: check the IP and Access Code (it changes if you refresh it on the printer).
+- If they're definitely correct and the printer still refuses (newer Bambu firmware restricts third-party access): enable **LAN Only Mode** and then **Developer Mode** on the printer. Note that LAN Only disables the cloud and Bambu Handy.
+- **Discovery finds nothing**: allow the app in Windows Firewall (private networks). Bambu Studio may hold the same ports — close it while searching, or enter the IP by hand.
+- **"Discord is not running"**: start the Discord desktop app, Print Presence reconnects by itself.
+- Details are in the **Log** tab.
 
-## Если не подключается
+## Build from source
 
-- **`Printer refused connection` / `Not authorized`** — проверь IP и Access Code. Access Code меняется, если на принтере его обновить.
-- Если данные точно верные, а принтер всё равно не пускает (новые прошивки Bambu ограничивают сторонний доступ): на принтере включи **LAN Only Mode**, а затем **Developer Mode**. Учти, что в LAN Only не работает облако и приложение Bambu Handy.
-- **`Discord is not available`** — запусти Discord-приложение. Программа сама переподключится.
-- Что происходит, видно в логе внизу окна программы.
-
-## Для разработки
-
-Нужен Python 3.11+.
+Requires Python 3.11+.
 
 ```bash
 python -m venv .venv
 .venv\Scripts\activate          # Windows
 pip install -r requirements.txt pytest
 python -m pytest
-python run_gui.py               # окно
-python -m print_presence -v     # консольная версия, читает config.toml (см. config.example.toml)
+python run_gui.py               # desktop app
+python -m print_presence -v     # console version, reads config.toml (see config.example.toml)
 ```
 
-Собрать `.exe` у себя: запусти `build.bat` — он установит всё нужное и положит программу в `dist\PrintPresence.exe`.
-Релиз: GitHub → Releases → **Draft a new release** → тег `v<версия>` → прикрепи `PrintPresence.exe`.
+Build the exe: run `build.bat` — it installs everything and puts the app into `dist\PrintPresence.exe`.
+The **Build Windows exe** workflow in the Actions tab does the same on GitHub and publishes a release for the current version.
 
-Добавить новый принтер: создай класс-наследник `Printer` в `print_presence/printers/`, который возвращает `PrinterStatus`, и зарегистрируй его в `printers/__init__.py`.
+Adding another printer: create a `Printer` subclass in `print_presence/printers/` that returns `PrinterStatus`, and register it in `printers/__init__.py`.
 
-## Лицензия
+## License
 
-MIT
+[MIT](LICENSE). Bambu Lab is a trademark of its owner; this project is not endorsed by Bambu Lab.

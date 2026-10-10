@@ -21,6 +21,8 @@ import struct
 import time
 from dataclasses import dataclass
 
+from ..i18n import tr
+
 log = logging.getLogger(__name__)
 
 PORTS = (2021, 1990)
@@ -134,7 +136,7 @@ def _open_socket(port: int) -> socket.socket | None:
     try:
         sock.bind(("", port))
     except OSError as e:
-        log.warning("Порт %d занят (%s) — возможно, открыт Bambu Studio", port, e)
+        log.warning(tr("log.port_busy", port=port, error=e))
         sock.close()
         return None
     try:
@@ -181,7 +183,7 @@ def discover(timeout: float = 8.0) -> list[FoundPrinter]:
                     continue
                 printer = parse_announcement(data, ip)
                 if printer and printer.serial not in found:
-                    log.info("Найден принтер: %s", printer.title)
+                    log.info(tr("log.found", title=printer.title))
                     found[printer.serial] = printer
     finally:
         for s in socks:

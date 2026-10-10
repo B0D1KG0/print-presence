@@ -15,7 +15,8 @@ from urllib.parse import quote
 import customtkinter as ctk
 from PIL import Image, ImageDraw
 
-from . import __version__, settings
+from . import __version__, i18n, settings
+from .i18n import tr
 from .presence import build_activity
 from .printers.bambu_discovery import FoundPrinter, discover, display_name, image_key
 from .runner import Runner, validate
@@ -24,7 +25,15 @@ from .status import PrinterStatus, State
 log = logging.getLogger("print_presence")
 
 REPO_URL = "https://github.com/B0D1KG0/print-presence"
-CUSTOM_APP_HELP = REPO_URL + "#" + quote("своё-discord-приложение-необязательно")
+DOCS = {
+    "en": (REPO_URL + "#readme", REPO_URL + "#own-discord-application-optional"),
+    "ru": (REPO_URL + "/blob/main/README.ru.md",
+           REPO_URL + "/blob/main/README.ru.md#" + quote("своё-discord-приложение-необязательно")),
+}
+
+
+def docs_url(custom_app: bool = False) -> str:
+    return DOCS.get(i18n.current(), DOCS["en"])[1 if custom_app else 0]
 
 FONT = "Segoe UI"
 BG = "#0e1014"
@@ -67,7 +76,7 @@ def fmt_minutes(minutes: int | None) -> str:
     if not minutes:
         return "—"
     h, m = divmod(int(minutes), 60)
-    return f"{h} ч {m:02d} мин" if h else f"{m} мин"
+    return tr("time.hm", h=h, m=m) if h else tr("time.m", m=m)
 
 
 class QueueHandler(logging.Handler):
@@ -230,12 +239,12 @@ class App:
         ctk.CTkLabel(header, image=self._logo, text="").grid(row=0, column=0, rowspan=2, padx=(0, 12))
         ctk.CTkLabel(header, text="Print Presence", font=font(20, "bold"), text_color=TEXT).grid(
             row=0, column=1, sticky="sw")
-        ctk.CTkLabel(header, text=f"Статус 3D-принтера в Discord · v{__version__}", font=font(12),
+        ctk.CTkLabel(header, text=tr("app.subtitle", version=__version__), font=font(12),
                      text_color=MUTED).grid(row=1, column=1, sticky="nw")
         self.pill = ctk.CTkLabel(header, text="", font=font(12, "bold"), fg_color=CARD, corner_radius=12,
                                  height=28)
         self.pill.grid(row=0, column=2, rowspan=2, sticky="e")
-        self._set_pill("Остановлено", MUTED)
+        self._set_pill(tr("pill.stopped"), MUTED)
 
         tabs = ctk.CTkTabview(root, fg_color="transparent", segmented_button_fg_color=CARD,
                               segmented_button_selected_color=CARD_2,
@@ -245,25 +254,26 @@ class App:
                               text_color=TEXT, anchor="w")
         tabs.grid(row=1, column=0, sticky="nsew", padx=12, pady=(0, 6))
         self.tabs = tabs
-        for name in ("Главная", "Настройки", "Журнал"):
+        self.TAB_HOME, self.TAB_SETTINGS, self.TAB_LOG = tr("tab.home"), tr("tab.settings"), tr("tab.log")
+        for name in (self.TAB_HOME, self.TAB_SETTINGS, self.TAB_LOG):
             tabs.add(name)
             tabs.tab(name).grid_columnconfigure(0, weight=1)
 
-        self._build_home(tabs.tab("Главная"))
-        self._build_settings(tabs.tab("Настройки"))
-        self._build_log(tabs.tab("Журнал"))
+        self._build_home(tabs.tab(self.TAB_HOME))
+        self._build_settings(tabs.tab(self.TAB_SETTINGS))
+        self._build_log(tabs.tab(self.TAB_LOG))
 
-        self.button = ctk.CTkButton(root, text="▶   Запустить", height=48, corner_radius=12, font=font(15, "bold"),
+        self.button = ctk.CTkButton(root, text=tr("btn.start"), height=48, corner_radius=12, font=font(15, "bold"),
                                     fg_color=GREEN, hover_color=GREEN_HOVER, command=self.toggle)
         self.button.grid(row=2, column=0, sticky="ew", padx=20, pady=(4, 18))
 
     def _build_home(self, tab: ctk.CTkFrame) -> None:
-        card = Card(tab, "Так тебя видят в Discord")
+        card = Card(tab, tr("home.preview"))
         card.grid(row=0, column=0, sticky="ew", pady=(4, 10))
         inner = ctk.CTkFrame(card, fg_color=DISCORD, corner_radius=10)
         inner.grid(row=1, column=0, sticky="ew", padx=12, pady=(4, 12))
         inner.grid_columnconfigure(1, weight=1)
-        ctk.CTkLabel(inner, text="ИГРАЕТ В", font=font(11, "bold"), text_color="#b5bac1").grid(
+        ctk.CTkLabel(inner, text=tr("home.playing"), font=font(11, "bold"), text_color="#b5bac1").grid(
             row=0, column=0, columnspan=2, sticky="w", padx=14, pady=(10, 4))
         self.pv_image = ctk.CTkLabel(inner, text="")
         self.pv_image.grid(row=1, column=0, rowspan=4, padx=(14, 12), pady=(0, 14), sticky="n")
@@ -276,7 +286,7 @@ class App:
         self.pv_time = ctk.CTkLabel(inner, text="", font=font(12), text_color="#23a55a", anchor="w")
         self.pv_time.grid(row=4, column=1, sticky="nw", pady=(0, 14))
 
-        stats = Card(tab, "Принтер")
+        stats = Card(tab, tr("home.printer"))
         stats.grid(row=1, column=0, sticky="ew")
         top = ctk.CTkFrame(stats, fg_color="transparent")
         top.grid(row=1, column=0, sticky="ew", padx=16, pady=(2, 0))
@@ -291,8 +301,8 @@ class App:
         tiles = ctk.CTkFrame(stats, fg_color="transparent")
         tiles.grid(row=3, column=0, sticky="ew", padx=12, pady=(0, 14))
         self.tiles: dict[str, ctk.CTkLabel] = {}
-        for i, (key, label) in enumerate((("layer", "Слой"), ("left", "Осталось"),
-                                          ("nozzle", "Сопло"), ("bed", "Стол"))):
+        for i, (key, label) in enumerate((("layer", tr("tile.layer")), ("left", tr("tile.left")),
+                                          ("nozzle", tr("tile.nozzle")), ("bed", tr("tile.bed")))):
             tiles.grid_columnconfigure(i, weight=1, uniform="t")
             t = ctk.CTkFrame(tiles, fg_color=CARD_2, corner_radius=10)
             t.grid(row=0, column=i, sticky="ew", padx=4)
@@ -309,12 +319,12 @@ class App:
         scroll.grid_columnconfigure(0, weight=1)
         p = self.cfg["printer"]
 
-        card = Card(scroll, "Принтер")
+        card = Card(scroll, tr("set.printer"))
         card.grid(row=0, column=0, sticky="ew", pady=(4, 10))
         find = ctk.CTkFrame(card, fg_color="transparent")
         find.grid(row=1, column=0, sticky="ew", padx=16, pady=(6, 4))
         find.grid_columnconfigure(1, weight=1)
-        self.find_btn = ctk.CTkButton(find, text="🔍  Найти принтер в сети", height=36, corner_radius=10,
+        self.find_btn = ctk.CTkButton(find, text=tr("set.find"), height=36, corner_radius=10,
                                       font=font(13, "bold"), fg_color=CARD_2, hover_color=BORDER,
                                       border_width=1, border_color=BORDER, command=self.search)
         self.find_btn.grid(row=0, column=0, sticky="w")
@@ -324,14 +334,14 @@ class App:
                                             fg_color=CARD_2, button_color=BORDER, button_hover_color=BORDER,
                                             command=self._choose_found)
 
-        self.f_host = Field(card, "IP принтера", "Находится автоматически, или: экран принтера → Настройки → WLAN",
+        self.f_host = Field(card, tr("set.host"), tr("set.host_hint"),
                             p.get("host", ""), placeholder="192.168.1.50")
-        self.f_serial = Field(card, "Серийный номер", "Находится автоматически, или: Bambu Studio → Устройство",
+        self.f_serial = Field(card, tr("set.serial"), tr("set.serial_hint"),
                               p.get("serial", ""))
         self.f_code = Field(card, "Access Code",
-                            "Принтер его не сообщает — смотри на экране: Настройки → WLAN → Access Code",
-                            p.get("access_code", ""), secret=True, placeholder="8 символов")
-        self.f_name = Field(card, "Имя в Discord", "Оставь пустым — подставится модель принтера",
+                            tr("set.code_hint"),
+                            p.get("access_code", ""), secret=True, placeholder=tr("set.code_placeholder"))
+        self.f_name = Field(card, tr("set.name"), tr("set.name_hint"),
                             p.get("name", ""), placeholder=self._auto_name(p.get("serial", "")))
         for i, f in enumerate((self.f_host, self.f_serial, self.f_code, self.f_name)):
             f.grid(row=3 + i, column=0, sticky="ew", padx=16, pady=(6, 4 if i < 3 else 14))
@@ -341,36 +351,32 @@ class App:
         d = self.cfg["discord"]
         custom = str(d.get("client_id", ""))
         self.use_default = tk.BooleanVar(value=bool(d.get("use_default", not custom)))
-        ctk.CTkSwitch(dc, text="Стандартное оформление (иконки уже готовы)", variable=self.use_default,
+        ctk.CTkSwitch(dc, text=tr("set.default_app"), variable=self.use_default,
                       font=font(13), progress_color=GREEN, command=self._update_client_state).grid(
             row=1, column=0, sticky="w", padx=16, pady=(6, 8))
-        self.f_client = Field(dc, "Своё Application ID",
-                              "Только если хочешь свои иконки и название — выключи переключатель выше", custom)
+        self.f_client = Field(dc, tr("set.client_id"), tr("set.client_id_hint"), custom)
         self.f_client.grid(row=2, column=0, sticky="ew", padx=16)
-        ctk.CTkButton(dc, text="Как создать своё приложение →", height=28, fg_color="transparent",
+        ctk.CTkButton(dc, text=tr("set.custom_app_help"), height=28, fg_color="transparent",
                       hover_color=CARD_2, text_color=LINK, font=font(12), anchor="w",
-                      command=lambda: webbrowser.open(CUSTOM_APP_HELP)).grid(
+                      command=lambda: webbrowser.open(docs_url(custom_app=True))).grid(
             row=3, column=0, sticky="w", padx=10, pady=(0, 12))
 
-        oc = Card(scroll, "Поведение")
+        oc = Card(scroll, tr("set.behaviour"))
         oc.grid(row=2, column=0, sticky="ew", pady=(0, 10))
         self.show_idle = tk.BooleanVar(value=bool(self.cfg["presence"].get("show_when_idle", True)))
         self.autostart = tk.BooleanVar(value=bool(self.cfg["app"].get("autostart", False)))
-        ctk.CTkSwitch(oc, text="Показывать статус, когда принтер простаивает", variable=self.show_idle,
+        ctk.CTkSwitch(oc, text=tr("set.show_idle"), variable=self.show_idle,
                       font=font(13), progress_color=GREEN).grid(row=1, column=0, sticky="w", padx=16, pady=(6, 4))
-        ctk.CTkSwitch(oc, text="Включать сразу при открытии программы", variable=self.autostart,
+        ctk.CTkSwitch(oc, text=tr("set.autostart"), variable=self.autostart,
                       font=font(13), progress_color=GREEN).grid(row=2, column=0, sticky="w", padx=16, pady=4)
-        lang = ctk.CTkFrame(oc, fg_color="transparent")
-        lang.grid(row=3, column=0, sticky="w", padx=16, pady=(8, 14))
-        ctk.CTkLabel(lang, text="Язык статуса", font=font(13), text_color=TEXT).pack(side="left", padx=(0, 10))
-        self.lang = ctk.CTkSegmentedButton(lang, values=["Русский", "English"], font=font(12),
-                                           selected_color=GREEN, selected_hover_color=GREEN_HOVER)
-        self.lang.set("English" if self.cfg["presence"].get("language") == "en" else "Русский")
-        self.lang.pack(side="left")
+        self.ui_lang = self._lang_selector(oc, 3, tr("set.ui_lang"), self.cfg["app"].get("language", "auto"),
+                                           self._on_ui_lang)
+        self.lang = self._lang_selector(oc, 4, tr("set.status_lang"), self.cfg["presence"].get("language", "auto"),
+                                        lambda _: self._show_preview(None) if not self.runner else None)
 
-        ctk.CTkButton(scroll, text="Инструкция на GitHub →", height=28, fg_color="transparent",
+        ctk.CTkButton(scroll, text=tr("set.instructions"), height=28, fg_color="transparent",
                       hover_color=CARD, text_color=LINK, font=font(12),
-                      command=lambda: webbrowser.open(REPO_URL + "#readme")).grid(row=3, column=0, sticky="w")
+                      command=lambda: webbrowser.open(docs_url())).grid(row=3, column=0, sticky="w")
         self._update_client_state()
 
     def _build_log(self, tab: ctk.CTkFrame) -> None:
@@ -391,7 +397,38 @@ class App:
         return image_key(self.cfg["printer"].get("model_code"), self.f_serial.get())
 
     def _lang_code(self) -> str:
-        return "en" if self.lang.get() == "English" else "ru"
+        return i18n.resolve(self._lang_choice(self.lang))
+
+    def _lang_selector(self, card: Card, row: int, label: str, value: str, command) -> ctk.CTkSegmentedButton:
+        frame = ctk.CTkFrame(card, fg_color="transparent")
+        frame.grid(row=row, column=0, sticky="w", padx=16, pady=(8, 14 if row == 4 else 0))
+        ctk.CTkLabel(frame, text=label, font=font(13), text_color=TEXT, width=190, anchor="w").pack(side="left")
+        seg = ctk.CTkSegmentedButton(frame, values=[tr("lang.auto"), "English", "Русский"], font=font(12),
+                                     selected_color=GREEN, selected_hover_color=GREEN_HOVER, command=command)
+        seg.set({"en": "English", "ru": "Русский"}.get(value, tr("lang.auto")))
+        seg.pack(side="left")
+        return seg
+
+    @staticmethod
+    def _lang_choice(seg: ctk.CTkSegmentedButton) -> str:
+        return {"English": "en", "Русский": "ru"}.get(seg.get(), "auto")
+
+    def _on_ui_lang(self, _value: str) -> None:
+        """Rebuild the window in the newly chosen language."""
+        cfg = self._collect()
+        settings.save(cfg)
+        i18n.set_language(cfg["app"]["language"])
+        running = self.runner is not None and self.runner.running
+        for child in self.root.winfo_children():
+            child.destroy()
+        self._build()
+        self.tabs.set(self.TAB_SETTINGS)
+        self._show_stats(PrinterStatus())
+        self._show_preview(None)
+        if running:
+            self._set_inputs_enabled(False)
+            self.button.configure(text=tr("btn.stop"), fg_color=RED, hover_color=RED_HOVER)
+            self._set_pill(tr("pill.connecting"), AMBER)
 
     def _printer_name(self) -> str:
         return self.f_name.get() or self._auto_name()
@@ -412,8 +449,8 @@ class App:
             host=self.f_host.get(), serial=self.f_serial.get(), access_code=self.f_code.get(),
             name=self.f_name.get())
         cfg.setdefault("discord", {}).update(use_default=self.use_default.get(), client_id=self.f_client.get())
-        cfg["presence"].update(show_when_idle=self.show_idle.get(), language=self._lang_code())
-        cfg["app"]["autostart"] = self.autostart.get()
+        cfg["presence"].update(show_when_idle=self.show_idle.get(), language=self._lang_choice(self.lang))
+        cfg["app"].update(autostart=self.autostart.get(), language=self._lang_choice(self.ui_lang))
         return cfg
 
     def _set_pill(self, text: str, color: str) -> None:
@@ -425,22 +462,21 @@ class App:
         if self.searching:
             return
         self.searching = True
-        self.find_btn.configure(state="disabled", text="🔍  Ищу…")
-        self.find_info.configure(text="Слушаю сеть ~8 секунд", text_color=MUTED)
+        self.find_btn.configure(state="disabled", text=tr("set.searching"))
+        self.find_info.configure(text=tr("set.listening"), text_color=MUTED)
         self.found_menu.grid_forget()
         threading.Thread(target=lambda: self.events.put(("found", discover(8.0))), daemon=True).start()
 
     def _on_found(self, printers: list[FoundPrinter]) -> None:
         self.searching = False
         running = self.runner is not None and self.runner.running
-        self.find_btn.configure(state="disabled" if running else "normal", text="🔍  Найти принтер в сети")
+        self.find_btn.configure(state="disabled" if running else "normal", text=tr("set.find"))
         self.found = printers
         if not printers:
             self.find_info.configure(
-                text="Не нашёл. Проверь, что ПК и принтер в одной сети,\n"
-                     "и разреши программу в брандмауэре Windows.", text_color=AMBER)
+                text=tr("set.not_found"), text_color=AMBER)
             return
-        self.find_info.configure(text=f"Найдено принтеров: {len(printers)}", text_color=GREEN)
+        self.find_info.configure(text=tr("set.found", n=len(printers)), text_color=GREEN)
         if len(printers) > 1:
             self.found_menu.configure(values=[p.title for p in printers])
             self.found_menu.set(printers[0].title)
@@ -461,9 +497,9 @@ class App:
         if not self.f_name.get():
             self.f_name.set("")  # refresh the placeholder
         self._show_preview(None)
-        log.info("Выбран принтер: %s", p.title)
+        log.info(tr("log.selected", title=p.title))
         if not self.f_code.get():
-            self.tabs.set("Настройки")
+            self.tabs.set(self.TAB_SETTINGS)
             self.f_code.entry.focus_set()
 
     # Start / stop ----------------------------------------------------------
@@ -480,23 +516,23 @@ class App:
         try:
             validate(cfg)
         except ValueError as e:
-            self.tabs.set("Настройки")
-            self._set_pill("Заполни настройки", AMBER)
+            self.tabs.set(self.TAB_SETTINGS)
+            self._set_pill(tr("pill.fill_settings"), AMBER)
             self.find_info.configure(text=str(e), text_color=AMBER)
             log.warning("%s", e)
             return
         self.runner = Runner(cfg, on_status=lambda s, d: self.events.put(("status", (s, d))))
         self.runner.start()
         self._set_inputs_enabled(False)
-        self.button.configure(text="■   Остановить", fg_color=RED, hover_color=RED_HOVER)
-        self._set_pill("Подключение…", AMBER)
-        self.tabs.set("Главная")
-        log.info("Запущено")
+        self.button.configure(text=tr("btn.stop"), fg_color=RED, hover_color=RED_HOVER)
+        self._set_pill(tr("pill.connecting"), AMBER)
+        self.tabs.set(self.TAB_HOME)
+        log.info(tr("log.started"))
 
     def stop(self) -> None:
         if self.runner:
             self.runner.stop(timeout=0)
-        self.button.configure(text="Останавливаю…", state="disabled")
+        self.button.configure(text=tr("btn.stopping"), state="disabled")
 
     def on_close(self) -> None:
         settings.save(self._collect())
@@ -512,8 +548,8 @@ class App:
         self.pv_title.configure(text=name)
         if activity is None:
             self.pv_image.configure(image=self.art.get(None, self._model_image()))
-            self.pv_details.configure(text="Нажми «Запустить» внизу" if status is None
-                                      else "Статус скрыт — принтер не на связи")
+            self.pv_details.configure(text=tr("home.press_start") if status is None
+                                      else tr("home.hidden"))
             self.pv_state.configure(text="")
             self.pv_time.configure(text="")
             return
@@ -521,14 +557,14 @@ class App:
         self.pv_details.configure(text=activity["details"].strip())
         self.pv_state.configure(text=activity.get("state", "").strip())
         left = status.remaining_min if activity.get("end") else None
-        self.pv_time.configure(text=f"⏱  осталось {fmt_minutes(left)}" if left else "")
+        self.pv_time.configure(text=tr("home.time_left", time=fmt_minutes(left)) if left else "")
 
     def _show_stats(self, s: PrinterStatus) -> None:
         color = STATE_COLORS[s.state]
         if s.state == State.OFFLINE:
-            self.st_job.configure(text="Нет связи с принтером" if self.runner else "Не запущено")
+            self.st_job.configure(text=tr("home.unreachable") if self.runner else tr("home.not_started"))
         else:
-            self.st_job.configure(text="Калибровка" if s.calibration else (s.job_name or "Без задания"))
+            self.st_job.configure(text=tr("home.calibration") if s.calibration else (s.job_name or tr("home.no_job")))
         pct = s.progress if s.state != State.OFFLINE else None
         self.st_percent.configure(text=f"{pct}%" if pct is not None else "", text_color=color)
         self.st_bar.configure(progress_color=color)
@@ -544,11 +580,11 @@ class App:
         self._show_preview(status)
         self._show_stats(status)
         if status.state == State.OFFLINE:
-            self._set_pill("Нет связи с принтером", AMBER)
+            self._set_pill(tr("pill.no_printer"), AMBER)
         elif not discord_ok:
-            self._set_pill("Discord не запущен", AMBER)
+            self._set_pill(tr("pill.no_discord"), AMBER)
         else:
-            self._set_pill("Работает", GREEN)
+            self._set_pill(tr("pill.running"), GREEN)
 
     def _poll(self) -> None:
         try:
@@ -564,9 +600,9 @@ class App:
             pass
         if self.runner and not self.runner.running:
             self.runner = None
-            self.button.configure(text="▶   Запустить", state="normal", fg_color=GREEN, hover_color=GREEN_HOVER)
+            self.button.configure(text=tr("btn.start"), state="normal", fg_color=GREEN, hover_color=GREEN_HOVER)
             self._set_inputs_enabled(True)
-            self._set_pill("Остановлено", MUTED)
+            self._set_pill(tr("pill.stopped"), MUTED)
             self._show_preview(None)
             self._show_stats(PrinterStatus())
         self.root.after(200, self._poll)
@@ -581,6 +617,7 @@ class App:
 
 
 def main() -> None:
+    i18n.set_language(settings.load()["app"].get("language", "auto"))
     ctk.set_appearance_mode("dark")
     ctk.set_default_color_theme("green")
     root = ctk.CTk()

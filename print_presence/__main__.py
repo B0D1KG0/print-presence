@@ -6,6 +6,7 @@ import sys
 import tomllib
 from pathlib import Path
 
+from . import i18n
 from .runner import Runner
 
 log = logging.getLogger("print_presence")
@@ -23,6 +24,7 @@ def main() -> int:
     parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args()
 
+    i18n.set_language("auto")
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,
         format="%(asctime)s %(levelname)-7s %(message)s",

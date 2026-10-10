@@ -7,7 +7,7 @@ if not exist .venv (
 )
 if not exist config.toml (
     copy config.example.toml config.toml >nul
-    echo Создан config.toml - заполни его и запусти start.bat ещё раз.
+    echo Created config.toml - fill it in and run start.bat again.
     notepad config.toml
     exit /b 0
 )
@@ -15,5 +15,5 @@ if not exist config.toml (
 pause
 exit /b 0
 :error
-echo Ошибка установки. Проверь, что установлен Python 3.11+ (python.org, галочка "Add to PATH").
+echo Install failed. Make sure Python 3.11+ is installed (python.org, tick "Add to PATH").
 pause

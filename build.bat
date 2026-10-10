@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 >nul
 cd /d "%~dp0"
-echo Сборка PrintPresence.exe...
+echo Building PrintPresence.exe...
 
 if not exist .venv (
     py -3 -m venv .venv || goto :nopython
@@ -19,17 +19,17 @@ if not exist .venv (
     run_gui.py || goto :error
 
 echo.
-echo Готово: %CD%\dist\PrintPresence.exe
+echo Done: %CD%\dist\PrintPresence.exe
 explorer dist
 pause
 exit /b 0
 
 :nopython
-echo Не найден Python. Установи Python 3.11+ с python.org (галочка "Add python.exe to PATH").
+echo Python not found. Install Python 3.11+ from python.org (tick "Add python.exe to PATH").
 pause
 exit /b 1
 
 :error
-echo Ошибка сборки, смотри сообщения выше.
+echo Build failed, see the messages above.
 pause
 exit /b 1
