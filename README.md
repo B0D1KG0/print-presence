@@ -71,7 +71,7 @@ python run_gui.py               # окно
 python -m print_presence -v     # консольная версия, читает config.toml (см. config.example.toml)
 ```
 
-Релиз: `git tag v0.x.y && git push --tags` — GitHub Actions соберёт `PrintPresence.exe` и приложит к релизу.
+Релиз: поменяй `__version__` в `print_presence/__init__.py` и запушь в `main` — GitHub Actions соберёт `PrintPresence.exe`, создаст тег `v<версия>` и релиз.
 
 Добавить новый принтер: создай класс-наследник `Printer` в `print_presence/printers/`, который возвращает `PrinterStatus`, и зарегистрируй его в `printers/__init__.py`.
 

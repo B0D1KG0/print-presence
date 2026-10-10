@@ -1,8 +1,12 @@
 name: Build Windows exe
 
+# A release is published automatically when __version__ in print_presence/__init__.py
+# changes on main (the v<version> tag is created by the release step).
+# Can also be started by hand from the Actions tab.
 on:
   push:
-    tags: ["v*"]
+    branches: [main]
+    paths: ["print_presence/__init__.py"]
   workflow_dispatch:
 
 permissions:
@@ -11,6 +15,9 @@ permissions:
 jobs:
   build:
     runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
 
@@ -23,6 +30,17 @@ jobs:
 
       - name: Test
         run: python -m pytest -q
+
+      - name: Read version
+        id: version
+        run: |
+          VERSION=$(python -c "import print_presence; print(print_presence.__version__)")
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+          if git ls-remote --exit-code --tags origin "v$VERSION" > /dev/null; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Build exe
         run: >
@@ -38,8 +56,10 @@ jobs:
           path: dist/PrintPresence.exe
 
       - name: Publish release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: steps.version.outputs.exists == 'false'
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          target_commitish: ${{ github.sha }}
           files: dist/PrintPresence.exe
           generate_release_notes: true
