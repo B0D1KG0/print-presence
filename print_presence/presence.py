@@ -24,6 +24,7 @@ TEXTS = {
         "layer": "Слой",
         "nozzle": "Сопло",
         "bed": "Стол",
+        "calibration": "Калибровка",
     },
     "en": {
         State.IDLE: "Idle",
@@ -35,6 +36,7 @@ TEXTS = {
         "layer": "Layer",
         "nozzle": "Nozzle",
         "bed": "Bed",
+        "calibration": "Calibration",
     },
 }
 
@@ -65,7 +67,7 @@ def build_activity(
         return None
     t = TEXTS.get(lang, TEXTS["en"])
     now = time.time() if now is None else now
-    job = status.job_name or ""
+    job = t["calibration"] if status.calibration else (status.job_name or "")
 
     details = t[status.state]
     if job and status.state in (State.PRINTING, State.PAUSED):
@@ -104,6 +106,12 @@ def build_activity(
     return activity
 
 
+def _summary(activity: dict[str, Any] | None) -> str:
+    if not activity:
+        return "скрыт"
+    return " · ".join(activity[k].strip() for k in ("details", "state") if activity.get(k))
+
+
 class DiscordPresence:
     """Wraps pypresence with automatic (re)connection to the Discord client."""
 
@@ -113,6 +121,10 @@ class DiscordPresence:
         self._last: dict[str, Any] | None = None
         self._next_connect = 0.0
 
+    @property
+    def connected(self) -> bool:
+        return self._rpc is not None
+
     def _connect(self) -> bool:
         if self._rpc is not None:
             return True
@@ -121,17 +133,17 @@ class DiscordPresence:
         try:
             rpc = Presence(self.client_id)
             rpc.connect()
-        except (PyPresenceException, OSError) as e:
-            log.warning("Discord is not available (%s), retrying in 30 s", e)
+        except Exception as e:  # pypresence raises a zoo of errors when Discord is closed
+            log.warning("Discord недоступен (%s), повтор через 30 с", e)
             self._next_connect = time.monotonic() + 30
             return False
-        log.info("Connected to Discord")
+        log.info("Подключено к Discord")
         self._rpc = rpc
         self._last = None
         return True
 
     def _drop(self, error: Exception) -> None:
-        log.warning("Lost connection to Discord: %s", error)
+        log.warning("Связь с Discord потеряна: %s", error)
         try:
             if self._rpc:
                 self._rpc.close()
@@ -152,7 +164,7 @@ class DiscordPresence:
             self._drop(e)
             return
         self._last = activity
-        log.info("Presence: %s", activity or "cleared")
+        log.info("Статус в Discord: %s", _summary(activity))
 
     def close(self) -> None:
         if self._rpc is None:

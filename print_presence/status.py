@@ -27,3 +27,4 @@ class PrinterStatus:
     nozzle_temp: float | None = None
     bed_temp: float | None = None
     speed_profile: str | None = None  # "silent", "standard", "sport", "ludicrous"
+    calibration: bool = False  # the printer runs its own calibration, not a user model

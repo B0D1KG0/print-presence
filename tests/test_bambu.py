@@ -45,3 +45,10 @@ def test_activity_finished_and_offline():
     assert a["state"] == "benchy"
     assert "end" not in a
     assert build_activity(PrinterStatus(), "P1S") is None
+
+
+def test_calibration_job_is_renamed():
+    s = parse_report({"gcode_state": "FINISH", "subtask_name": "pa_line_calib_mode"})
+    assert s.calibration
+    a = build_activity(s, "P1S", "ru")
+    assert a["state"] == "Калибровка"

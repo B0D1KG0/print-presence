@@ -67,12 +67,19 @@ def _job_name(data: dict[str, Any]) -> str | None:
     return name
 
 
+def _is_calibration(name: str | None) -> bool:
+    # Firmware jobs like "pa_line_calib_mode" or "auto_cali_for_user_param".
+    return bool(name) and "cali" in name.lower()
+
+
 def parse_report(data: dict[str, Any]) -> PrinterStatus:
     """Convert the merged "print" section of a Bambu report into PrinterStatus."""
     state = GCODE_STATES.get(str(data.get("gcode_state", "")).upper(), State.IDLE)
+    job = _job_name(data)
     return PrinterStatus(
         state=state,
-        job_name=_job_name(data),
+        job_name=job,
+        calibration=_is_calibration(job),
         progress=_int(data.get("mc_percent")),
         layer=_int(data.get("layer_num")),
         total_layers=_int(data.get("total_layer_num")),
@@ -111,7 +118,7 @@ class BambuPrinter(Printer):
     # Printer API -----------------------------------------------------------
 
     def start(self) -> None:
-        log.info("Connecting to %s (%s)...", self.name, self.host)
+        log.info("Подключаюсь к %s (%s)...", self.name, self.host)
         self._client.connect_async(self.host, MQTT_PORT, keepalive=60)
         self._client.loop_start()
 
@@ -134,12 +141,12 @@ class BambuPrinter(Printer):
     def _on_connect(self, client, userdata, flags, reason_code, properties) -> None:
         if reason_code.is_failure:
             log.error(
-                "Printer refused connection: %s. Check the IP and Access Code; "
-                "if they are correct, enable LAN Only + Developer Mode on the printer.",
+                "Принтер отклонил подключение: %s. Проверь IP и Access Code; "
+                "если они верные — включи на принтере LAN Only + Developer Mode.",
                 reason_code,
             )
             return
-        log.info("Connected to %s", self.name)
+        log.info("Подключено к %s", self.name)
         client.subscribe(f"device/{self.serial}/report")
         with self._lock:
             self._connected = True
@@ -150,7 +157,7 @@ class BambuPrinter(Printer):
             self._connected = False
             self._data = {}
         if not self._stopping:
-            log.warning("Disconnected from %s (%s), reconnecting...", self.name, reason_code)
+            log.warning("Связь с %s потеряна (%s), переподключаюсь...", self.name, reason_code)
 
     def _on_message(self, client, userdata, msg) -> None:
         try:
