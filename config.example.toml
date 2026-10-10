@@ -1,0 +1,21 @@
+# Скопируй этот файл в config.toml и заполни.
+# config.toml не попадает в git — там лежит Access Code принтера.
+
+[discord]
+# Developer Portal -> твоё приложение -> General Information -> Application ID
+client_id = ""
+
+[printer]
+type = "bambu"
+# Это имя видно в Discord: «Играет в Bambu Lab P1S»
+name = "Bambu Lab P1S"
+# На принтере: Settings -> WLAN (значок Wi-Fi) -> IP и Access Code
+host = "192.168.1.50"
+access_code = ""
+# Bambu Studio -> Device -> Update (Serial) или на экране принтера
+serial = ""
+
+[presence]
+language = "ru"          # "ru" или "en"
+show_when_idle = true    # показывать статус, когда принтер ничего не печатает
+update_interval = 15     # секунд, меньше 15 Discord не разрешает

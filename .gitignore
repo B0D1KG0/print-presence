@@ -1,0 +1,11 @@
+# Secrets: printer access code lives here
+config.toml
+
+__pycache__/
+*.pyc
+.venv/
+venv/
+build/
+dist/
+*.spec
+.pytest_cache/
