@@ -4,6 +4,8 @@
 
 Discord Rich Presence для 3D-принтеров: друзья в Discord видят, что ты печатаешь, на каком слое, сколько процентов готово и сколько осталось.
 
+**[⬇ Скачать PrintPresence.exe](https://github.com/B0D1KG0/print-presence/releases/latest/download/PrintPresence.exe)** · [Все версии](https://github.com/B0D1KG0/print-presence/releases)
+
 <p>
   <img src="docs/home-ru.png" width="380" alt="Главная: превью Discord и прогресс печати">
   <img src="docs/settings-ru.png" width="380" alt="Настройки с автопоиском принтера">
@@ -31,7 +33,7 @@ Discord Rich Presence для 3D-принтеров: друзья в Discord ви
 
 ## Установка
 
-1. Скачай `PrintPresence.exe` со страницы [Releases](https://github.com/B0D1KG0/print-presence/releases) (или собери сам, см. ниже).
+1. Скачай **[PrintPresence.exe](https://github.com/B0D1KG0/print-presence/releases/latest/download/PrintPresence.exe)** — всегда последняя версия (или собери сам, см. ниже).
 2. Запусти. Windows может показать «Windows защитила ваш компьютер» — это потому, что программа не подписана сертификатом: нажми **Подробнее → Выполнить в любом случае**.
 3. При первом запуске программа сама ищет принтер в сети и подставляет **IP, серийный номер и модель**. Если Windows спросит про брандмауэр — разреши доступ для частных сетей, иначе поиск не сработает.
 4. Введи **Access Code** (принтер его не сообщает: экран принтера → Настройки → WLAN) и нажми **▶ Запустить**.

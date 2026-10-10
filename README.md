@@ -4,6 +4,8 @@
 
 Discord Rich Presence for 3D printers: your friends see what you're printing, the current layer, progress and time left.
 
+**[⬇ Download PrintPresence.exe](https://github.com/B0D1KG0/print-presence/releases/latest/download/PrintPresence.exe)** · [All releases](https://github.com/B0D1KG0/print-presence/releases)
+
 <p>
   <img src="docs/home-en.png" width="380" alt="Home tab: Discord preview and print progress">
   <img src="docs/settings-en.png" width="380" alt="Settings tab with automatic printer discovery">
@@ -31,7 +33,7 @@ Supports **Bambu Lab** printers (tested on P1S) over the local network. Other pr
 
 ## Install
 
-1. Download `PrintPresence.exe` from [Releases](https://github.com/B0D1KG0/print-presence/releases) (or build it yourself, see below).
+1. Download **[PrintPresence.exe](https://github.com/B0D1KG0/print-presence/releases/latest/download/PrintPresence.exe)** — always the latest version (or build it yourself, see below).
 2. Run it. Windows may say "Windows protected your PC" because the app isn't code-signed: click **More info → Run anyway**.
 3. On first launch the app looks for printers on your network and fills in the **IP, serial number and model**. If Windows asks about the firewall, allow access on private networks — otherwise discovery can't work.
 4. Enter the **Access Code** (the printer doesn't announce it: printer screen → Settings → WLAN) and press **▶ Start**.
