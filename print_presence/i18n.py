@@ -160,8 +160,8 @@ STRINGS: dict[str, dict[str, str]] = {
     "set.hide_job": _s("Hide the file name in Discord", "Скрывать имя файла в Discord",
                        "Приховувати назву файлу в Discord"),
     "set.button": _s("“Get Print Presence” button in my status",
-                     "Кнопка «Скачать Print Presence» в статусе",
-                     "Кнопка «Завантажити Print Presence» у статусі"),
+                     "Кнопка «Get Print Presence» в статусе",
+                     "Кнопка «Get Print Presence» у статусі"),
     # Settings: behaviour
     "set.behaviour": _s("Behaviour", "Поведение", "Поведінка"),
     "set.show_idle": _s("Show status while the printer is idle", "Показывать статус, когда принтер простаивает",

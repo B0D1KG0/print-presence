@@ -30,6 +30,9 @@ def client_id_from(cfg: dict[str, Any]) -> str:
 
 
 REPO_URL = "https://github.com/B0D1KG0/print-presence"
+# Discord limits button labels to 32 *bytes*: a longer (e.g. Cyrillic) label makes the server
+# silently drop the whole activity for other people while it still shows on your own profile.
+BUTTON_LABEL = "Get Print Presence"
 
 TEXTS = {
     "ru": {
@@ -43,7 +46,6 @@ TEXTS = {
         "nozzle": "Сопло",
         "bed": "Стол",
         "calibration": "Калибровка",
-        "button": "Скачать Print Presence",
     },
     "uk": {
         State.IDLE: "Простоює",
@@ -56,7 +58,6 @@ TEXTS = {
         "nozzle": "Сопло",
         "bed": "Стіл",
         "calibration": "Калібрування",
-        "button": "Завантажити Print Presence",
     },
     "en": {
         State.IDLE: "Idle",
@@ -69,7 +70,6 @@ TEXTS = {
         "nozzle": "Nozzle",
         "bed": "Bed",
         "calibration": "Calibration",
-        "button": "Get Print Presence",
     },
 }
 
@@ -144,7 +144,7 @@ def build_activity(
         activity["state"] = _clip(state)
     if button:
         # Discord shows buttons to other people only, never on your own profile.
-        activity["buttons"] = [{"label": t["button"], "url": REPO_URL}]
+        activity["buttons"] = [{"label": BUTTON_LABEL, "url": REPO_URL}]
     if status.state == State.PRINTING and status.remaining_min:
         # Round to a minute so the timestamp doesn't jitter between updates.
         activity["end"] = int((now + status.remaining_min * 60) // 60 * 60)

@@ -20,7 +20,7 @@ from . import __version__, i18n, settings, updates, winstartup
 from .filament import filament_label
 from .i18n import LANGUAGE_NAMES, tr
 from .images import PrinterArt, ring
-from .presence import build_activity, client_id_from
+from .presence import BUTTON_LABEL, build_activity, client_id_from
 from .printers.bambu_discovery import FoundPrinter, discover, display_name, image_key
 from .runner import Runner, status_language, validate
 from .status import PrinterStatus, State
@@ -657,8 +657,7 @@ class App:
                 parts.append(tr("home.time_left", time=fmt_minutes(s.remaining_min)).replace("⏱", "").strip())
             self.st_line.configure(text=" · ".join(parts))
         if self.show_button.get():
-            label = {"ru": "Скачать Print Presence", "uk": "Завантажити Print Presence"}.get(
-                self._lang_code(), "Get Print Presence")
+            label = BUTTON_LABEL
             self.st_button.configure(text=f"   {label}   ")
             self.st_button.grid(row=0, column=2, rowspan=3, padx=16)
         else:

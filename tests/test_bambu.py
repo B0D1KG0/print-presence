@@ -116,7 +116,7 @@ def test_activity_filament_button_and_privacy():
     s = parse_report({**REPORT, **AMS_REPORT})
     a = build_activity(s, "Bambu Lab P1S", "ru")
     assert a["large_text"] == "Bambu Lab P1S · PLA Basic · Чёрный"
-    assert a["buttons"] == [{"label": "Скачать Print Presence", "url": "https://github.com/B0D1KG0/print-presence"}]
+    assert a["buttons"] == [{"label": "Get Print Presence", "url": "https://github.com/B0D1KG0/print-presence"}]
     hidden = build_activity(s, "Bambu Lab P1S", "en", hide_job=True, button=False)
     assert hidden["details"] == "Printing"
     assert "buttons" not in hidden
@@ -130,3 +130,12 @@ def test_name_is_not_sent_to_discord():
     payload = discord_payload(a)
     assert "name" not in payload
     assert payload["details"] == a["details"]
+
+
+def test_button_label_fits_discord_byte_limit():
+    from print_presence.presence import BUTTON_LABEL
+    for lang in ("en", "ru", "uk"):
+        a = build_activity(parse_report(REPORT), "P1S", lang)
+        for b in a["buttons"]:
+            assert 1 <= len(b["label"].encode("utf-8")) <= 32
+            assert len(b["url"]) <= 512
