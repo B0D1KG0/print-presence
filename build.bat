@@ -51,7 +51,23 @@ if not defined ISCC (
     goto :done
 )
 echo Building the installer...
-"%ISCC%" /Q /DAppVersion=%VERSION% installer\PrintPresence.iss || goto :error
+rem Antivirus (e.g. Windows Defender) may briefly lock the new Setup.exe while Inno Setup
+rem writes its icon ("EndUpdateResource failed"); a retry a few seconds later usually works.
+set TRIES=0
+:iscc
+"%ISCC%" /Q /DAppVersion=%VERSION% installer\PrintPresence.iss && goto :iscc_ok
+set /a TRIES+=1
+if %TRIES% geq 3 goto :iscc_failed
+echo Retrying in 5 seconds (%TRIES%/3)...
+timeout /t 5 /nobreak >nul
+goto :iscc
+:iscc_failed
+echo.
+echo The installer could not be written, most likely because of the antivirus.
+echo Add this folder to the Windows Security exclusions and run build.bat again:
+echo   %CD%\dist
+goto :error
+:iscc_ok
 if defined SIGN_CERT (
     signtool sign /f "%SIGN_CERT%" /p "%SIGN_PASSWORD%" /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 dist\PrintPresence-Setup.exe || goto :error
 )
