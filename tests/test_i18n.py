@@ -26,3 +26,14 @@ def test_resolve_and_tr():
 def test_every_string_has_both_languages():
     for key, entry in i18n.STRINGS.items():
         assert set(entry) == {"en", "ru", "uk"}, key
+
+
+def test_every_used_key_exists():
+    import re
+    from pathlib import Path
+    pkg = Path(i18n.__file__).parent
+    used = set()
+    for f in pkg.rglob("*.py"):
+        used |= set(re.findall(r"""\btr\(\s*["']([a-z_]+\.[a-z_.]+)["']""", f.read_text(encoding="utf-8")))
+    missing = sorted(k for k in used if k not in i18n.STRINGS)
+    assert not missing, missing

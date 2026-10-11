@@ -140,3 +140,63 @@ def ring(percent: float | None, color: str, track: str, size: int = 104, width: 
             cy = s / 2 + r * math.sin(math.radians(angle))
             d.ellipse((cx - w / 2, cy - w / 2, cx + w / 2, cy + w / 2), fill=color)
     return im.resize((size, size), Image.LANCZOS)
+
+
+def icon(name: str, color: str, size: int = 20) -> Image.Image:
+    """Simple line icons for the sidebar and buttons (drawn at 4x for smooth edges)."""
+    s = size * 4
+    im = Image.new("RGBA", (s, s), (0, 0, 0, 0))
+    d = ImageDraw.Draw(im)
+    w = max(4, s // 12)
+    m = s * 0.14  # margin
+    if name == "printers":  # 2x2 rounded tiles
+        g = s * 0.08
+        cell = (s - 2 * m - g) / 2
+        for cx in (0, 1):
+            for cy in (0, 1):
+                x0, y0 = m + cx * (cell + g), m + cy * (cell + g)
+                d.rounded_rectangle((x0, y0, x0 + cell, y0 + cell), radius=s * 0.06, outline=color, width=w)
+    elif name == "settings":  # sliders
+        for i, knob in enumerate((0.35, 0.68, 0.45)):
+            y = m + (s - 2 * m) * (0.15 + 0.35 * i)
+            d.line((m, y, s - m, y), fill=color, width=w)
+            x = m + (s - 2 * m) * knob
+            r = s * 0.085
+            d.ellipse((x - r, y - r, x + r, y + r), fill=color)
+    elif name == "log":  # lines of text
+        for i, length in enumerate((1.0, 0.75, 0.9, 0.55)):
+            y = m + (s - 2 * m) * (0.1 + 0.27 * i)
+            d.line((m, y, m + (s - 2 * m) * length, y), fill=color, width=w)
+    elif name == "about":  # circled "i"
+        d.ellipse((m, m, s - m, s - m), outline=color, width=w)
+        cx = s / 2
+        d.ellipse((cx - w * 0.8, s * 0.3 - w * 0.8, cx + w * 0.8, s * 0.3 + w * 0.8), fill=color)
+        d.line((cx, s * 0.43, cx, s * 0.7), fill=color, width=w)
+    elif name == "search":
+        r = (s - 2 * m) * 0.36
+        cx = cy = m + r
+        d.ellipse((cx - r, cy - r, cx + r, cy + r), outline=color, width=w)
+        d.line((cx + r * 0.7, cy + r * 0.7, s - m, s - m), fill=color, width=w)
+    elif name == "plus":
+        d.line((s / 2, m, s / 2, s - m), fill=color, width=w)
+        d.line((m, s / 2, s - m, s / 2), fill=color, width=w)
+    elif name == "play":
+        d.polygon([(s * 0.3, s * 0.2), (s * 0.3, s * 0.8), (s * 0.8, s * 0.5)], fill=color)
+    elif name == "stop":
+        d.rounded_rectangle((s * 0.25, s * 0.25, s * 0.75, s * 0.75), radius=s * 0.06, fill=color)
+    elif name == "copy":
+        d.rounded_rectangle((m + s * 0.18, m, s - m, s - m - s * 0.18), radius=s * 0.06, outline=color, width=w)
+        d.rounded_rectangle((m, m + s * 0.18, s - m - s * 0.18, s - m), radius=s * 0.06, outline=color, width=w)
+    elif name == "folder":
+        d.rounded_rectangle((m, s * 0.3, s - m, s - m), radius=s * 0.06, outline=color, width=w)
+        d.line((m, s * 0.3, m + s * 0.25, s * 0.3), fill=color, width=w)
+    elif name == "trash":
+        d.line((m, s * 0.27, s - m, s * 0.27), fill=color, width=w)
+        d.rounded_rectangle((s * 0.25, s * 0.27, s * 0.75, s - m), radius=s * 0.05, outline=color, width=w)
+        d.line((s * 0.4, m, s * 0.6, m), fill=color, width=w)
+    elif name == "chevron":
+        d.line((s * 0.38, s * 0.22, s * 0.65, s * 0.5, s * 0.38, s * 0.78), fill=color, width=w, joint="curve")
+    elif name == "arrow_up":
+        d.line((s / 2, s - m, s / 2, m + w), fill=color, width=w)
+        d.line((s * 0.25, s * 0.42, s / 2, m + w / 2, s * 0.75, s * 0.42), fill=color, width=w, joint="curve")
+    return im.resize((size, size), Image.LANCZOS)
