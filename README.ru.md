@@ -111,4 +111,4 @@ Workflow **Build Windows exe** во вкладке Actions делает то ж�
 
 ## Лицензия
 
-[MIT](LICENSE). Bambu Lab — товарный знак его владельца; проект не одобрен Bambu Lab.
+[MIT](LICENSE) © B0D1KG0. Сторонние компоненты: [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md). Bambu Lab — товарный знак его владельца; проект не одобрен Bambu Lab.

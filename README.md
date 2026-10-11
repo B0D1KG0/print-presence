@@ -111,4 +111,4 @@ Adding another printer: create a `Printer` subclass in `print_presence/printers/
 
 ## License
 
-[MIT](LICENSE). Bambu Lab is a trademark of its owner; this project is not endorsed by Bambu Lab.
+[MIT](LICENSE) © B0D1KG0. Third-party components: [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md). Bambu Lab is a trademark of its owner; this project is not endorsed by Bambu Lab.

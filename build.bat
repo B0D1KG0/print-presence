@@ -36,6 +36,8 @@ if exist dist\portable rmdir /s /q dist\portable
 mkdir dist\portable\PrintPresence
 copy /y dist\PrintPresence.exe dist\portable\PrintPresence\ >nul || goto :error
 copy /y installer\portable.txt dist\portable\PrintPresence\ >nul || goto :error
+copy /y LICENSE dist\portable\PrintPresence\LICENSE.txt >nul || goto :error
+copy /y THIRD-PARTY-NOTICES.md dist\portable\PrintPresence\THIRD-PARTY-NOTICES.txt >nul || goto :error
 powershell -NoProfile -Command "Compress-Archive -Path 'dist\portable\PrintPresence' -DestinationPath 'dist\PrintPresence-Portable.zip' -Force" || goto :error
 rmdir /s /q dist\portable
 

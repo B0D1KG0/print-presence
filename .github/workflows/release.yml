@@ -55,6 +55,8 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force dist/portable/PrintPresence | Out-Null
           Copy-Item dist/PrintPresence.exe, installer/portable.txt dist/portable/PrintPresence/
+          Copy-Item LICENSE dist/portable/PrintPresence/LICENSE.txt
+          Copy-Item THIRD-PARTY-NOTICES.md dist/portable/PrintPresence/THIRD-PARTY-NOTICES.txt
           Compress-Archive -Path dist/portable/PrintPresence -DestinationPath dist/PrintPresence-Portable.zip -Force
 
       - name: Installer
