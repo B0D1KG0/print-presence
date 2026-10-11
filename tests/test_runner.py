@@ -39,3 +39,19 @@ def test_status_language_follows_interface_when_auto():
     assert status_language("auto", "uk") == "uk"
     assert status_language("en", "uk") == "en"
     assert status_language(None, "ru") == "ru"
+
+
+def test_portable_mode_keeps_data_next_to_exe(tmp_path, monkeypatch):
+    monkeypatch.setenv("APPDATA", str(tmp_path / "appdata"))
+    exe_dir = tmp_path / "PrintPresence"
+    exe_dir.mkdir()
+    assert not settings.is_portable(exe_dir)
+    assert settings.data_dir(exe_dir) == tmp_path / "appdata" / "PrintPresence"
+    (exe_dir / settings.PORTABLE_MARKER).write_text("portable", encoding="utf-8")
+    assert settings.is_portable(exe_dir)
+    assert settings.data_dir(exe_dir) == exe_dir / "data"
+
+
+def test_running_from_source_is_never_portable():
+    assert settings.app_dir() is None
+    assert not settings.is_portable()

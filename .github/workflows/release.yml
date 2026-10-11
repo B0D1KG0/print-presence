@@ -31,6 +31,7 @@ jobs:
         id: version
         run: |
           VERSION=$(python -c "import print_presence; print(print_presence.__version__)")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
           if git ls-remote --exit-code --tags origin "v$VERSION" > /dev/null; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
@@ -49,10 +50,26 @@ jobs:
           --hidden-import pystray._win32
           run_gui.py
 
+      - name: Portable zip
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist/portable/PrintPresence | Out-Null
+          Copy-Item dist/PrintPresence.exe, installer/portable.txt dist/portable/PrintPresence/
+          Compress-Archive -Path dist/portable/PrintPresence -DestinationPath dist/PrintPresence-Portable.zip -Force
+
+      - name: Installer
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Q "/DAppVersion=${{ steps.version.outputs.version }}" installer/PrintPresence.iss
+
       - uses: actions/upload-artifact@v4
         with:
           name: PrintPresence
-          path: dist/PrintPresence.exe
+          path: |
+            dist/PrintPresence.exe
+            dist/PrintPresence-Setup.exe
+            dist/PrintPresence-Portable.zip
 
       - name: Publish release
         if: steps.version.outputs.exists == 'false'
@@ -60,5 +77,8 @@ jobs:
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           target_commitish: ${{ github.sha }}
-          files: dist/PrintPresence.exe
+          files: |
+            dist/PrintPresence-Setup.exe
+            dist/PrintPresence-Portable.zip
+            dist/PrintPresence.exe
           generate_release_notes: true

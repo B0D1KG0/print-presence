@@ -6,7 +6,7 @@
 
 Discord Rich Presence для 3D-принтерів: друзі в Discord бачать, що ти друкуєш, на якому шарі, скільки відсотків готово і скільки залишилось.
 
-**[⬇ Завантажити PrintPresence.exe](https://github.com/B0D1KG0/print-presence/releases/latest/download/PrintPresence.exe)** · [Усі версії](https://github.com/B0D1KG0/print-presence/releases)
+<p align="center"><b><a href="https://github.com/B0D1KG0/print-presence/releases/latest/download/PrintPresence-Setup.exe">⬇ Завантажити інсталятор</a></b> · <a href="https://github.com/B0D1KG0/print-presence/releases/latest/download/PrintPresence-Portable.zip">Портативна версія (zip)</a> · <a href="https://github.com/B0D1KG0/print-presence/releases">Усі версії</a></p>
 
 <p>
   <img src="docs/home-uk.png" width="760" alt="Головна: прев'ю Discord і прогрес друку"><br>
@@ -38,14 +38,21 @@ Discord Rich Presence для 3D-принтерів: друзі в Discord бач
 
 ## Встановлення
 
-1. Завантаж **[PrintPresence.exe](https://github.com/B0D1KG0/print-presence/releases/latest/download/PrintPresence.exe)** — завжди остання версія (або збери сам, див. нижче).
+1. Завантаж один із варіантів (завжди остання версія):
+
+   | Файл | Для кого |
+   |---|---|
+   | **[PrintPresence-Setup.exe](https://github.com/B0D1KG0/print-presence/releases/latest/download/PrintPresence-Setup.exe)** | Для більшості. Встановлює програму з ярликами в «Пуску» та на робочому столі, видаляється через «Програми та компоненти». Права адміністратора не потрібні. |
+   | **[PrintPresence-Portable.zip](https://github.com/B0D1KG0/print-presence/releases/latest/download/PrintPresence-Portable.zip)** | Розпакуй будь-куди (хоч на флешку) і запусти. Налаштування зберігаються в теці `data` поруч із програмою, у систему нічого не записується. |
+   | [PrintPresence.exe](https://github.com/B0D1KG0/print-presence/releases/latest/download/PrintPresence.exe) | Один файл без встановлення; налаштування в `%APPDATA%\PrintPresence`. |
+
 2. Запусти. Windows може показати «Windows захистила ваш комп'ютер» — це тому, що програма не підписана сертифікатом: натисни **Докладніше → Усе одно запустити**.
 3. При першому запуску програма сама шукає принтери в мережі й підставляє **IP, серійний номер і модель**. Якщо Windows запитає про брандмауер — дозволь доступ для приватних мереж, інакше пошук не спрацює.
 4. Введи **Access Code** (принтер його не повідомляє: екран принтера → Налаштування → WLAN) і натисни **▶ Запустити**.
 
 Якщо автопошук не знайшов принтер (інша підмережа, VPN, закритий брандмауер) — IP і серійний номер можна ввести вручну.
 
-Налаштування зберігаються в `%APPDATA%\PrintPresence\settings.json`.
+Налаштування зберігаються в `%APPDATA%\PrintPresence\settings.json` (портативна версія — у теці `data` поруч із програмою).
 
 - **Кілька принтерів**: Налаштування → Принтери → **+ Додати**, або **Знайти принтери в мережі** — додасть усі знайдені. У Discord показується найзайнятіший (друкує > пауза > готується > готово > простоює).
 - **Трей**: закриття вікна залишає програму працювати біля годинника; правий клік по значку — Відкрити / Запустити / Зупинити / Вихід.
@@ -96,7 +103,7 @@ python run_gui.py               # програма з вікном
 python -m print_presence -v     # консольна версія, читає config.toml (див. config.example.toml)
 ```
 
-Зібрати `.exe`: запусти `build.bat` — він встановить усе потрібне й покладе програму в `dist\PrintPresence.exe`.
+Збірка: запусти `build.bat` — він встановить усе потрібне й створить `dist\PrintPresence.exe`, `dist\PrintPresence-Portable.zip`, а якщо встановлено [Inno Setup 6](https://jrsoftware.org/isinfo.php) (`winget install JRSoftware.InnoSetup`) — ще й `dist\PrintPresence-Setup.exe`.
 Щоб підписати файл, перед запуском `build.bat` задай `SIGN_CERT` (шлях до `.pfx`) і `SIGN_PASSWORD` (потрібен `signtool` з Windows SDK).
 Workflow **Build Windows exe** у вкладці Actions робить те саме на GitHub і публікує реліз поточної версії.
 

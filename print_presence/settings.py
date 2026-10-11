@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -17,9 +18,31 @@ DEFAULTS: dict[str, Any] = {
 EMPTY_PRINTER: dict[str, Any] = {"type": "bambu", "name": "", "host": "", "access_code": "", "serial": ""}
 
 
-def settings_path() -> Path:
+# A file with this name next to PrintPresence.exe turns on portable mode:
+# settings and the picture cache are kept in a "data" folder next to the exe.
+PORTABLE_MARKER = "portable.txt"
+
+
+def app_dir() -> Path | None:
+    """Folder of the running exe (None when running from source)."""
+    return Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else None
+
+
+def is_portable(exe_dir: Path | None = None) -> bool:
+    exe_dir = exe_dir or app_dir()
+    return exe_dir is not None and (exe_dir / PORTABLE_MARKER).exists()
+
+
+def data_dir(exe_dir: Path | None = None) -> Path:
+    exe_dir = exe_dir or app_dir()
+    if exe_dir is not None and is_portable(exe_dir):
+        return exe_dir / "data"
     base = os.environ.get("APPDATA") or Path.home() / ".config"
-    return Path(base) / "PrintPresence" / "settings.json"
+    return Path(base) / "PrintPresence"
+
+
+def settings_path() -> Path:
+    return data_dir() / "settings.json"
 
 
 def load(path: Path | None = None) -> dict[str, Any]:

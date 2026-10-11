@@ -525,7 +525,8 @@ class App:
         ctk.CTkLabel(brand, image=self._logo, text="").grid(row=0, column=0, rowspan=2, padx=(0, 12))
         ctk.CTkLabel(brand, text="Print Presence", font=font(16, "bold"), text_color=TEXT, height=20,
                      anchor="w").grid(row=0, column=1, sticky="sw")
-        ctk.CTkLabel(brand, text=f"v{__version__}", font=font(11), text_color=FAINT, height=14,
+        ctk.CTkLabel(brand, text=f"v{__version__}" + (" · Portable" if settings.is_portable() else ""),
+                     font=font(11), text_color=FAINT, height=14,
                      anchor="w").grid(row=1, column=1, sticky="nw")
 
         nav = ctk.CTkFrame(side, fg_color="transparent")
@@ -1043,7 +1044,8 @@ class App:
                                                                   sticky="n")
         ctk.CTkLabel(inner, text="Print Presence", font=font(26, "bold"), text_color=TEXT, anchor="w").grid(
             row=0, column=1, sticky="w")
-        ctk.CTkLabel(inner, text=f"v{__version__}", font=font(13), text_color=MUTED, anchor="w").grid(
+        ctk.CTkLabel(inner, text=f"v{__version__}" + (" · Portable" if settings.is_portable() else ""),
+                     font=font(13), text_color=MUTED, anchor="w").grid(
             row=1, column=1, sticky="w")
         ctk.CTkLabel(inner, text=tr("about.desc"), font=font(14), text_color=TEXT_2, anchor="w", justify="left",
                      wraplength=560).grid(row=2, column=1, sticky="w", pady=(12, 0))

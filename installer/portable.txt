@@ -1,0 +1,13 @@
+Print Presence — portable mode / портативный режим / портативний режим
+
+EN: This file keeps Print Presence portable: settings and the picture cache are saved
+    in the "data" folder next to PrintPresence.exe, nothing is written to the system.
+    Delete this file to use the normal %APPDATA%\PrintPresence folder instead.
+
+RU: Этот файл включает портативный режим: настройки и кэш картинок хранятся
+    в папке "data" рядом с PrintPresence.exe, в систему ничего не пишется.
+    Удали файл, чтобы программа хранила настройки в %APPDATA%\PrintPresence.
+
+UK: Цей файл вмикає портативний режим: налаштування й кеш картинок зберігаються
+    в теці "data" поруч із PrintPresence.exe, у систему нічого не записується.
+    Видали файл, щоб програма зберігала налаштування в %APPDATA%\PrintPresence.

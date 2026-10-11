@@ -6,7 +6,7 @@
 
 Discord Rich Presence for 3D printers: your friends see what you're printing, the current layer, progress and time left.
 
-**[⬇ Download PrintPresence.exe](https://github.com/B0D1KG0/print-presence/releases/latest/download/PrintPresence.exe)** · [All releases](https://github.com/B0D1KG0/print-presence/releases)
+<p align="center"><b><a href="https://github.com/B0D1KG0/print-presence/releases/latest/download/PrintPresence-Setup.exe">⬇ Download installer</a></b> · <a href="https://github.com/B0D1KG0/print-presence/releases/latest/download/PrintPresence-Portable.zip">Portable (zip)</a> · <a href="https://github.com/B0D1KG0/print-presence/releases">All releases</a></p>
 
 <p>
   <img src="docs/home-en.png" width="760" alt="Home tab: Discord preview and print progress"><br>
@@ -38,14 +38,21 @@ Supports **Bambu Lab** printers (tested on P1S) over the local network. Other pr
 
 ## Install
 
-1. Download **[PrintPresence.exe](https://github.com/B0D1KG0/print-presence/releases/latest/download/PrintPresence.exe)** — always the latest version (or build it yourself, see below).
+1. Download one of the versions (always the latest):
+
+   | File | For whom |
+   |---|---|
+   | **[PrintPresence-Setup.exe](https://github.com/B0D1KG0/print-presence/releases/latest/download/PrintPresence-Setup.exe)** | Most people. Installs the app with Start menu / desktop shortcuts and an uninstaller. No administrator rights needed. |
+   | **[PrintPresence-Portable.zip](https://github.com/B0D1KG0/print-presence/releases/latest/download/PrintPresence-Portable.zip)** | Unzip anywhere (even a USB stick) and run. Settings stay in the `data` folder next to the app, nothing is written to the system. |
+   | [PrintPresence.exe](https://github.com/B0D1KG0/print-presence/releases/latest/download/PrintPresence.exe) | A single file without installing; settings go to `%APPDATA%\PrintPresence`. |
+
 2. Run it. Windows may say "Windows protected your PC" because the app isn't code-signed: click **More info → Run anyway**.
 3. On first launch the app looks for printers on your network and fills in the **IP, serial number and model**. If Windows asks about the firewall, allow access on private networks — otherwise discovery can't work.
 4. Enter the **Access Code** (the printer doesn't announce it: printer screen → Settings → WLAN) and press **▶ Start**.
 
 If discovery doesn't find the printer (different subnet, VPN, blocked by the firewall), enter the IP and serial number by hand.
 
-Settings are saved to `%APPDATA%\PrintPresence\settings.json`.
+Settings are saved to `%APPDATA%\PrintPresence\settings.json` (portable version: the `data` folder next to the app).
 
 - **Several printers**: Settings → Printers → **+ Add**, or **Find printers on network** adds every printer it finds. Discord shows the busiest one (printing > paused > preparing > finished > idle).
 - **Tray**: closing the window keeps the app running next to the clock; right-click the icon for Open / Start / Stop / Quit.
@@ -96,7 +103,7 @@ python run_gui.py               # desktop app
 python -m print_presence -v     # console version, reads config.toml (see config.example.toml)
 ```
 
-Build the exe: run `build.bat` — it installs everything and puts the app into `dist\PrintPresence.exe`.
+Build: run `build.bat` — it installs everything and creates `dist\PrintPresence.exe`, `dist\PrintPresence-Portable.zip` and, if [Inno Setup 6](https://jrsoftware.org/isinfo.php) is installed (`winget install JRSoftware.InnoSetup`), `dist\PrintPresence-Setup.exe`.
 To sign it, set `SIGN_CERT` (path to a `.pfx`) and `SIGN_PASSWORD` before running `build.bat` (needs `signtool` from the Windows SDK).
 The **Build Windows exe** workflow in the Actions tab does the same on GitHub and publishes a release for the current version.
 
