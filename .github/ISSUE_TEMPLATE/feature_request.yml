@@ -1,0 +1,23 @@
+name: Feature request
+description: An idea for Print Presence
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for the idea! English, Ukrainian or Russian are all fine.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would it solve?
+      placeholder: When I print on two printers, I'd like to…
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your idea
+      description: How could it work? Screenshots or sketches are welcome.
+  - type: input
+    id: printer
+    attributes:
+      label: Printer model (if it matters)
