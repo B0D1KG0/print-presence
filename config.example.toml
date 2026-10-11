@@ -8,7 +8,8 @@
 # Your own: Developer Portal -> your app -> General Information -> Application ID
 client_id = ""
 
-[printer]
+# One [[printers]] block per printer. With several, Discord shows the busiest one.
+[[printers]]
 type = "bambu"
 # Shown in Discord after "Playing". Empty = printer model, e.g. "Bambu Lab P1S".
 name = ""
@@ -19,6 +20,8 @@ access_code = ""
 serial = ""
 
 [presence]
-language = "auto"        # "auto" (system language), "en" or "ru"
+language = "auto"        # "auto" (system language), "en", "ru" or "uk"
+hide_job = false         # hide the file name in Discord
+button = true            # "Get Print Presence" button in your status (only others see it)
 show_when_idle = true    # show status while the printer is idle
 update_interval = 15     # seconds; Discord doesn't allow less than 15

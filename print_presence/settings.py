@@ -9,10 +9,12 @@ from typing import Any
 
 DEFAULTS: dict[str, Any] = {
     "discord": {"use_default": True, "client_id": ""},
-    "printer": {"type": "bambu", "name": "", "host": "", "access_code": "", "serial": ""},
-    "presence": {"language": "auto", "show_when_idle": True},
-    "app": {"autostart": False, "language": "auto"},
+    "printers": [],
+    "presence": {"language": "auto", "show_when_idle": True, "hide_job": False, "button": True},
+    "app": {"autostart": False, "language": "auto", "close_to_tray": True, "check_updates": True},
 }
+
+EMPTY_PRINTER: dict[str, Any] = {"type": "bambu", "name": "", "host": "", "access_code": "", "serial": ""}
 
 
 def settings_path() -> Path:
@@ -30,6 +32,18 @@ def load(path: Path | None = None) -> dict[str, Any]:
     for section, values in stored.items():
         if isinstance(values, dict):
             cfg.setdefault(section, {}).update(values)
+        elif section == "printers" and isinstance(values, list):
+            cfg["printers"] = [dict(EMPTY_PRINTER, **p) for p in values if isinstance(p, dict)]
+    migrate(cfg)
+    return cfg
+
+
+def migrate(cfg: dict[str, Any]) -> dict[str, Any]:
+    """v0.5 stored a single [printer]; now there is a list of printers."""
+    old = cfg.pop("printer", None)
+    if not cfg.get("printers") and isinstance(old, dict) and any(old.get(k) for k in ("host", "serial")):
+        cfg["printers"] = [dict(EMPTY_PRINTER, **old)]
+    cfg.setdefault("printers", [])
     return cfg
 
 

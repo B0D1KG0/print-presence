@@ -73,10 +73,41 @@ def _is_calibration(name: str | None) -> bool:
     return bool(name) and "cali" in name.lower()
 
 
+def _active_tray(data: dict[str, Any]) -> dict[str, Any] | None:
+    """The spool that is feeding the nozzle: an AMS slot or the external spool."""
+    ams = data.get("ams") if isinstance(data.get("ams"), dict) else {}
+    units = ams.get("ams") if isinstance(ams.get("ams"), list) else []
+    now = _int(ams.get("tray_now"))
+    external = data.get("vt_tray") if isinstance(data.get("vt_tray"), dict) else None
+    if now == 254 or (now in (None, 255) and not units):
+        # 254 = external spool; printers without an AMS always feed from it.
+        return external if external and external.get("tray_type") else None
+    if now is None or now == 255:
+        return None
+    for unit in units:
+        uid = _int(unit.get("id")) or 0
+        for tray in unit.get("tray") or []:
+            tid = _int(tray.get("id")) or 0
+            # AMS / AMS lite have 4 slots; AMS HT (id >= 128) has one.
+            if (uid if uid >= 128 else uid * 4 + tid) == now:
+                return tray if tray.get("tray_type") else None
+    return None
+
+
+def deep_merge(target: dict[str, Any], update: dict[str, Any]) -> None:
+    """P1/A1 send partial updates, also inside nested objects like "ams"."""
+    for key, value in update.items():
+        if isinstance(value, dict) and isinstance(target.get(key), dict):
+            deep_merge(target[key], value)
+        else:
+            target[key] = value
+
+
 def parse_report(data: dict[str, Any]) -> PrinterStatus:
     """Convert the merged "print" section of a Bambu report into PrinterStatus."""
     state = GCODE_STATES.get(str(data.get("gcode_state", "")).upper(), State.IDLE)
     job = _job_name(data)
+    tray = _active_tray(data) or {}
     return PrinterStatus(
         state=state,
         job_name=job,
@@ -88,6 +119,8 @@ def parse_report(data: dict[str, Any]) -> PrinterStatus:
         nozzle_temp=_float(data.get("nozzle_temper")),
         bed_temp=_float(data.get("bed_temper")),
         speed_profile=SPEED_LEVELS.get(_int(data.get("spd_lvl")) or 0),
+        filament=(tray.get("tray_sub_brands") or tray.get("tray_type") or None),
+        filament_color=tray.get("tray_color") or None,
     )
 
 
@@ -165,7 +198,7 @@ class BambuPrinter(Printer):
         if not isinstance(section, dict):
             return
         with self._lock:
-            self._data.update(section)
+            deep_merge(self._data, section)
 
     def _request_pushall(self) -> None:
         self._last_pushall = time.monotonic()

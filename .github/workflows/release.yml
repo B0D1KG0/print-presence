@@ -46,6 +46,7 @@ jobs:
           --add-data "assets:assets"
           --collect-data customtkinter
           --hidden-import PIL._tkinter_finder
+          --hidden-import pystray._win32
           run_gui.py
 
       - uses: actions/upload-artifact@v4

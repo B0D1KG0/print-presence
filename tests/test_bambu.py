@@ -65,3 +65,60 @@ def test_client_id_falls_back_to_default(monkeypatch):
     assert presence.client_id_from({"discord": {"use_default": True, "client_id": "222"}}) == "111"
     assert presence.client_id_from({"discord": {"use_default": False, "client_id": "222"}}) == "222"
     assert presence.client_id_from({"discord": {"use_default": False, "client_id": ""}}) == ""
+
+
+AMS_REPORT = {
+    "gcode_state": "RUNNING",
+    "ams": {
+        "tray_now": "1",
+        "ams": [{"id": "0", "tray": [
+            {"id": "0", "tray_type": "PETG", "tray_sub_brands": "PETG HF", "tray_color": "FFFFFFFF"},
+            {"id": "1", "tray_type": "PLA", "tray_sub_brands": "PLA Basic", "tray_color": "161616FF"},
+        ]}],
+    },
+    "vt_tray": {"id": "254", "tray_type": "TPU", "tray_color": "FF0000FF"},
+}
+
+
+def test_filament_from_ams():
+    s = parse_report(AMS_REPORT)
+    assert (s.filament, s.filament_color) == ("PLA Basic", "161616FF")
+
+
+def test_filament_external_spool_and_no_ams():
+    ext = dict(AMS_REPORT, ams={**AMS_REPORT["ams"], "tray_now": "254"})
+    assert parse_report(ext).filament == "TPU"
+    no_ams = {"gcode_state": "RUNNING", "ams": {"tray_now": "255", "ams": []},
+              "vt_tray": {"tray_type": "PLA", "tray_color": "0000FFFF"}}
+    assert parse_report(no_ams).filament == "PLA"
+    unloaded = dict(AMS_REPORT, ams={**AMS_REPORT["ams"], "tray_now": "255"})
+    assert parse_report(unloaded).filament is None
+
+
+def test_deep_merge_keeps_nested_fields():
+    from print_presence.printers.bambu import deep_merge
+    data = {"ams": {"tray_now": "0", "ams": [1]}, "mc_percent": 1}
+    deep_merge(data, {"ams": {"tray_now": "2"}, "mc_percent": 5})
+    assert data == {"ams": {"tray_now": "2", "ams": [1]}, "mc_percent": 5}
+
+
+def test_color_names():
+    from print_presence.filament import color_name, filament_label
+    assert color_name("161616FF", "ru") == "Чёрный"
+    assert color_name("FFFFFFFF", "en") == "White"
+    assert color_name("D21E28FF", "uk") == "Червоний"
+    assert color_name("FFFFFF00", "en") == "Clear"
+    assert color_name("zz", "en") is None
+    assert filament_label("PLA Basic", "161616FF", "ru") == "PLA Basic · Чёрный"
+
+
+def test_activity_filament_button_and_privacy():
+    s = parse_report({**REPORT, **AMS_REPORT})
+    a = build_activity(s, "Bambu Lab P1S", "ru")
+    assert a["large_text"] == "Bambu Lab P1S · PLA Basic · Чёрный"
+    assert a["buttons"] == [{"label": "Скачать Print Presence", "url": "https://github.com/B0D1KG0/print-presence"}]
+    hidden = build_activity(s, "Bambu Lab P1S", "en", hide_job=True, button=False)
+    assert hidden["details"] == "Printing"
+    assert "buttons" not in hidden
+    done = build_activity(PrinterStatus(state=State.FINISHED, job_name="secret_part"), "P1S", "uk", hide_job=True)
+    assert done["details"] == "Друк завершено" and "state" not in done

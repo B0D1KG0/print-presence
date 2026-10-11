@@ -28,3 +28,5 @@ class PrinterStatus:
     bed_temp: float | None = None
     speed_profile: str | None = None  # "silent", "standard", "sport", "ludicrous"
     calibration: bool = False  # the printer runs its own calibration, not a user model
+    filament: str | None = None  # material of the active spool, e.g. "PLA Basic"
+    filament_color: str | None = None  # "RRGGBB" or "RRGGBBAA"

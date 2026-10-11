@@ -16,7 +16,13 @@ if not exist .venv (
     --add-data "assets;assets" ^
     --collect-data customtkinter ^
     --hidden-import PIL._tkinter_finder ^
+    --hidden-import pystray._win32 ^
     run_gui.py || goto :error
+
+rem Optional code signing: set SIGN_CERT=path\to\cert.pfx and SIGN_PASSWORD=... (needs signtool from the Windows SDK)
+if defined SIGN_CERT (
+    signtool sign /f "%SIGN_CERT%" /p "%SIGN_PASSWORD%" /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 dist\PrintPresence.exe || goto :error
+)
 
 echo.
 echo Done: %CD%\dist\PrintPresence.exe

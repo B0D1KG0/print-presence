@@ -1,6 +1,6 @@
 # Print Presence
 
-**English** · [Русский](README.ru.md)
+**English** · [Русский](README.ru.md) · [Українська](README.uk.md)
 
 Discord Rich Presence for 3D printers: your friends see what you're printing, the current layer, progress and time left.
 
@@ -17,13 +17,15 @@ Supports **Bambu Lab** printers (tested on P1S) over the local network. Other pr
 
 ## Features
 
-- Status in Discord: printing / preparing / paused / finished / failed / idle, file name, layer `87/240`, percent, countdown to the end, nozzle and bed temperatures on hover
-- **Finds the printer on the network automatically**: IP, serial number and model — you only type the Access Code
+- Status in Discord: printing / preparing / paused / finished / failed / idle, file name, layer `87/240`, percent, countdown to the end; filament (`PLA Basic · Black`) and temperatures on hover
+- **Finds printers on the network automatically**: IP, serial number and model — you only type the Access Code
+- **Several printers** (print farm): Discord shows the one that is printing right now
 - Printer picture in Discord matches your model (X1, P1S, P1P, A1, A1 mini, H2D)
-- Live preview of how Discord shows you, progress bar, temperatures
+- **Runs in the tray** and can **start with Windows**; tells you when a new version is out
+- Privacy: optionally hide the file name
 - Nothing to set up in Discord — the shared app with icons is built in
 - Works locally: talks to the printer over your LAN, no Bambu cloud, the Access Code never leaves your PC
-- English and Russian interface, picked from your system language
+- English, Russian and Ukrainian interface, picked from your system language
 
 ## Requirements
 
@@ -41,8 +43,12 @@ Supports **Bambu Lab** printers (tested on P1S) over the local network. Other pr
 If discovery doesn't find the printer (different subnet, VPN, blocked by the firewall), enter the IP and serial number by hand.
 
 Settings are saved to `%APPDATA%\PrintPresence\settings.json`.
-"Start automatically when the app opens" starts the status without pressing the button.
-Leave "Name in Discord" empty to show the printer model, e.g. `Bambu Lab P1S`.
+
+- **Several printers**: Settings → Printers → **+ Add**, or **Find printers on network** adds every printer it finds. Discord shows the busiest one (printing > paused > preparing > finished > idle).
+- **Tray**: closing the window keeps the app running next to the clock; right-click the icon for Open / Start / Stop / Quit.
+- **Launch with Windows**: the app starts minimised in the tray and turns the status on by itself.
+- Leave "Name in Discord" empty to show the printer model, e.g. `Bambu Lab P1S`.
+- The **“Get Print Presence”** button in your status is visible to other people only (Discord never shows your own buttons to you). You can turn it off.
 
 ## Own Discord application (optional)
 
@@ -88,6 +94,7 @@ python -m print_presence -v     # console version, reads config.toml (see config
 ```
 
 Build the exe: run `build.bat` — it installs everything and puts the app into `dist\PrintPresence.exe`.
+To sign it, set `SIGN_CERT` (path to a `.pfx`) and `SIGN_PASSWORD` before running `build.bat` (needs `signtool` from the Windows SDK).
 The **Build Windows exe** workflow in the Actions tab does the same on GitHub and publishes a release for the current version.
 
 Adding another printer: create a `Printer` subclass in `print_presence/printers/` that returns `PrinterStatus`, and register it in `printers/__init__.py`.

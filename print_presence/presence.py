@@ -9,6 +9,7 @@ from typing import Any
 from pypresence import Presence
 from pypresence.exceptions import PyPresenceException
 
+from .filament import filament_label
 from .i18n import tr
 from .status import PrinterStatus, State
 
@@ -27,6 +28,9 @@ def client_id_from(cfg: dict[str, Any]) -> str:
         return DEFAULT_CLIENT_ID
     return custom
 
+
+REPO_URL = "https://github.com/B0D1KG0/print-presence"
+
 TEXTS = {
     "ru": {
         State.IDLE: "Простаивает",
@@ -39,6 +43,20 @@ TEXTS = {
         "nozzle": "Сопло",
         "bed": "Стол",
         "calibration": "Калибровка",
+        "button": "Скачать Print Presence",
+    },
+    "uk": {
+        State.IDLE: "Простоює",
+        State.PREPARING: "Готується до друку",
+        State.PRINTING: "Друкує",
+        State.PAUSED: "Пауза",
+        State.FINISHED: "Друк завершено",
+        State.FAILED: "Друк перервано",
+        "layer": "Шар",
+        "nozzle": "Сопло",
+        "bed": "Стіл",
+        "calibration": "Калібрування",
+        "button": "Завантажити Print Presence",
     },
     "en": {
         State.IDLE: "Idle",
@@ -51,6 +69,7 @@ TEXTS = {
         "nozzle": "Nozzle",
         "bed": "Bed",
         "calibration": "Calibration",
+        "button": "Get Print Presence",
     },
 }
 
@@ -79,6 +98,8 @@ def build_activity(
     lang: str = "ru",
     now: float | None = None,
     large_image: str = "printer",
+    hide_job: bool = False,
+    button: bool = True,
 ) -> dict[str, Any] | None:
     """Return pypresence.update() kwargs, or None to clear the presence."""
     if status.state == State.OFFLINE:
@@ -86,6 +107,8 @@ def build_activity(
     t = TEXTS.get(lang, TEXTS["en"])
     now = time.time() if now is None else now
     job = t["calibration"] if status.calibration else (status.job_name or "")
+    if hide_job and not status.calibration:
+        job = ""
 
     details = t[status.state]
     if job and status.state in (State.PRINTING, State.PAUSED):
@@ -112,12 +135,16 @@ def build_activity(
         "name": printer_name,
         "details": _clip(details),
         "large_image": large_image,
-        "large_text": printer_name,
+        "large_text": _clip(" · ".join(p for p in (
+            printer_name, filament_label(status.filament, status.filament_color, lang)) if p)),
         "small_image": SMALL_IMAGES[status.state],
         "small_text": " · ".join(temps) or t[status.state],
     }
     if state:
         activity["state"] = _clip(state)
+    if button:
+        # Discord shows buttons to other people only, never on your own profile.
+        activity["buttons"] = [{"label": t["button"], "url": REPO_URL}]
     if status.state == State.PRINTING and status.remaining_min:
         # Round to a minute so the timestamp doesn't jitter between updates.
         activity["end"] = int((now + status.remaining_min * 60) // 60 * 60)
