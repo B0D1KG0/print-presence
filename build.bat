@@ -10,6 +10,9 @@ if not exist .venv (
 .venv\Scripts\python -m pip install -q -r requirements.txt pyinstaller pytest || goto :error
 .venv\Scripts\python -m pytest -q || goto :error
 
+rem A running PrintPresence.exe (e.g. hidden in the tray) locks the file in dist\
+taskkill /im PrintPresence.exe /f >nul 2>&1
+
 .venv\Scripts\pyinstaller --noconfirm --onefile --windowed ^
     --name PrintPresence ^
     --icon assets\app.ico ^
