@@ -452,7 +452,7 @@ class App:
             self._check_updates()
 
     def _app_icon(self) -> Image.Image:
-        return self.art.local("printer") or Image.new("RGBA", (64, 64), (31, 35, 43, 255))
+        return self.art.local("logo") or self.art.local("printer") or Image.new("RGBA", (64, 64), (31, 35, 43, 255))
 
     def _set_icon(self) -> None:
         ico = resource("assets/app.ico")
@@ -461,7 +461,7 @@ class App:
             self.root.after(250, lambda: self.root.iconbitmap(str(ico)))
         else:
             try:
-                self._icon = tk.PhotoImage(file=resource("assets/printer.png")).subsample(8)
+                self._icon = tk.PhotoImage(file=resource("assets/logo.png")).subsample(8)
                 self.root.iconphoto(True, self._icon)
             except tk.TclError:
                 pass

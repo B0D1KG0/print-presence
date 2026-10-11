@@ -1,4 +1,6 @@
-# Print Presence
+<p align="center"><img src="assets/logo.png" width="128" alt="Логотип Print Presence"></p>
+
+<h1 align="center">Print Presence</h1>
 
 [English](README.md) · [Русский](README.ru.md) · **Українська**
 
