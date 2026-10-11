@@ -7,8 +7,8 @@ Discord Rich Presence for 3D printers: your friends see what you're printing, th
 **[⬇ Download PrintPresence.exe](https://github.com/B0D1KG0/print-presence/releases/latest/download/PrintPresence.exe)** · [All releases](https://github.com/B0D1KG0/print-presence/releases)
 
 <p>
-  <img src="docs/home-en.png" width="380" alt="Home tab: Discord preview and print progress">
-  <img src="docs/settings-en.png" width="380" alt="Settings tab with automatic printer discovery">
+  <img src="docs/home-en.png" width="760" alt="Home tab: Discord preview and print progress"><br>
+  <img src="docs/settings-en.png" width="760" alt="Settings tab with automatic printer discovery">
 </p>
 
 Supports **Bambu Lab** printers (tested on P1S) over the local network. Other printers can be added as separate modules in `print_presence/printers/`.
@@ -21,6 +21,7 @@ Supports **Bambu Lab** printers (tested on P1S) over the local network. Other pr
 - **Finds printers on the network automatically**: IP, serial number and model — you only type the Access Code
 - **Several printers** (print farm): Discord shows the one that is printing right now
 - Printer picture in Discord matches your model (X1, P1S, P1P, A1, A1 mini, H2D)
+- Dashboard with a card per printer: photo, progress ring, layer, time left, filament
 - **Runs in the tray** and can **start with Windows**; tells you when a new version is out
 - Privacy: optionally hide the file name
 - Nothing to set up in Discord — the shared app with icons is built in

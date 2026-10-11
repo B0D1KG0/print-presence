@@ -7,8 +7,8 @@ Discord Rich Presence для 3D-принтеров: друзья в Discord ви
 **[⬇ Скачать PrintPresence.exe](https://github.com/B0D1KG0/print-presence/releases/latest/download/PrintPresence.exe)** · [Все версии](https://github.com/B0D1KG0/print-presence/releases)
 
 <p>
-  <img src="docs/home-ru.png" width="380" alt="Главная: превью Discord и прогресс печати">
-  <img src="docs/settings-ru.png" width="380" alt="Настройки с автопоиском принтера">
+  <img src="docs/home-ru.png" width="760" alt="Главная: превью Discord и прогресс печати"><br>
+  <img src="docs/settings-ru.png" width="760" alt="Настройки с автопоиском принтера">
 </p>
 
 Поддерживаются принтеры **Bambu Lab** (проверяется на P1S) через локальную сеть. Другие принтеры можно добавить отдельным модулем в `print_presence/printers/`.
@@ -21,6 +21,7 @@ Discord Rich Presence для 3D-принтеров: друзья в Discord ви
 - **Сам находит принтеры в сети**: IP, серийный номер и модель — вводишь только Access Code
 - **Несколько принтеров** (ферма): в Discord показывается тот, что сейчас печатает
 - Картинка принтера в Discord под твою модель (X1, P1S, P1P, A1, A1 mini, H2D)
+- Панель с карточкой на каждый принтер: фото, кольцо прогресса, слой, оставшееся время, филамент
 - **Работает в трее** и может **запускаться вместе с Windows**; сообщает о новой версии
 - Приватность: по желанию скрывает имя файла
 - В Discord ничего настраивать не нужно — общее приложение с иконками уже встроено
