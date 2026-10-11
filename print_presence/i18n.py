@@ -145,8 +145,9 @@ STRINGS: dict[str, dict[str, str]] = {
                         "Принтер його не повідомляє — дивись на екрані: Налаштування → WLAN → Access Code"),
     "set.code_placeholder": _s("8 characters", "8 символов", "8 символів"),
     "set.name": _s("Name in Discord", "Имя в Discord", "Ім'я в Discord"),
-    "set.name_hint": _s("Leave empty to use the printer model", "Оставь пустым — подставится модель принтера",
-                        "Залиш порожнім — підставиться модель принтера"),
+    "set.name_hint": _s("Shown in the app and when hovering the picture in Discord. Empty = printer model",
+                        "Видно в программе и при наведении на картинку в Discord. Пусто — модель принтера",
+                        "Видно в програмі й при наведенні на картинку в Discord. Порожньо — модель принтера"),
     # Settings: Discord
     "set.default_app": _s("Standard design (icons ready to go)", "Стандартное оформление (иконки уже готовы)",
                           "Стандартне оформлення (іконки вже готові)"),

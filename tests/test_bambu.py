@@ -122,3 +122,11 @@ def test_activity_filament_button_and_privacy():
     assert "buttons" not in hidden
     done = build_activity(PrinterStatus(state=State.FINISHED, job_name="secret_part"), "P1S", "uk", hide_job=True)
     assert done["details"] == "Друк завершено" and "state" not in done
+
+
+def test_name_is_not_sent_to_discord():
+    from print_presence.presence import discord_payload
+    a = build_activity(parse_report(REPORT), "My printer", "en")
+    payload = discord_payload(a)
+    assert "name" not in payload
+    assert payload["details"] == a["details"]

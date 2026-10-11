@@ -157,6 +157,16 @@ def _summary(activity: dict[str, Any] | None) -> str:
     return " · ".join(activity[k].strip() for k in ("details", "state") if activity.get(k))
 
 
+def discord_payload(activity: dict[str, Any]) -> dict[str, Any]:
+    """What is actually sent to Discord.
+
+    "name" is only used by the app's own preview: Discord shows the activity locally with it,
+    but doesn't pass such an activity on to other people. The status title always comes from
+    the Discord application name.
+    """
+    return {k: v for k, v in activity.items() if k != "name"}
+
+
 class DiscordPresence:
     """Wraps pypresence with automatic (re)connection to the Discord client."""
 
@@ -204,7 +214,7 @@ class DiscordPresence:
             if activity is None:
                 self._rpc.clear()
             else:
-                self._rpc.update(**activity)
+                self._rpc.update(**discord_payload(activity))
         except (PyPresenceException, OSError) as e:
             self._drop(e)
             return

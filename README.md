@@ -48,7 +48,7 @@ Settings are saved to `%APPDATA%\PrintPresence\settings.json`.
 - **Several printers**: Settings → Printers → **+ Add**, or **Find printers on network** adds every printer it finds. Discord shows the busiest one (printing > paused > preparing > finished > idle).
 - **Tray**: closing the window keeps the app running next to the clock; right-click the icon for Open / Start / Stop / Quit.
 - **Launch with Windows**: the app starts minimised in the tray and turns the status on by itself.
-- Leave "Name in Discord" empty to show the printer model, e.g. `Bambu Lab P1S`.
+- "Name in Discord" is shown when hovering the picture in your status; leave it empty to use the printer model. The title after "Playing" is always the Discord application name.
 - The **“Get Print Presence”** button in your status is visible to other people only (Discord never shows your own buttons to you). You can turn it off.
 
 ## Own Discord application (optional)
