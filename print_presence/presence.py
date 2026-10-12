@@ -146,7 +146,7 @@ def custom_options(presence: dict[str, Any] | None) -> dict[str, Any]:
     opts = json.loads(json.dumps(DEFAULT_TEMPLATES))  # deep copy
     if isinstance(stored, dict):
         opts.update({k: v for k, v in stored.items() if k in DEFAULT_TEMPLATES})
-    if isinstance(opts["timer"], bool):  # v0.9.0 had an on/off switch
+    if isinstance(opts["timer"], bool):  # early 0.9 builds had an on/off switch
         opts["timer"] = "remaining" if opts["timer"] else "none"
     if opts["timer"] not in TIMERS:
         opts["timer"] = "remaining"
