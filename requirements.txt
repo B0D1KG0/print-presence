@@ -1,5 +1,5 @@
 paho-mqtt>=2.0,<3
-pypresence>=4.5
+pypresence>=4.6
 customtkinter>=5.2,<7
 pillow>=10
 pystray>=0.19

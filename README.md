@@ -69,6 +69,11 @@ The **Constructor** tab lets you write every line of the status yourself. Turn o
 - `{name}` is replaced with a value; a part in `[square brackets]` disappears when a value inside it is empty — `[ · {progress}]` is shown only while printing.
 - Click a variable chip to insert it into the selected line. The preview on the right shows sample states (printing, paused, done, idle) or the real printer.
 - While the status is running, every change is sent to Discord within a few seconds (Discord allows about 5 updates per 20 seconds).
+- **Own text per state**: pick a state under "Text for" (printing, paused, done, error, idle) and turn on "Own text for this state".
+- Every line except the first can be switched off; each one shows a `used/128` counter.
+- **Display**: timer (time left / elapsed / off), counter `(87 of 240)` by layers or percent, status badge on/off, activity type (Playing / Watching / Listening / Competing) and what the member list shows (app name, 1st or 2nd line).
+- **Own button**: a second button with your link (e.g. the model on MakerWorld). Discord allows 2 buttons and 32 bytes per label — a Cyrillic letter takes 2 bytes, longer text is cut.
+- Discord's limits that can't be changed: 2 text lines of up to 128 characters, the name after "Playing" is the Discord application name, pictures must be uploaded to the application.
 
 | Variable | Example | | Variable | Example |
 |---|---|---|---|---|

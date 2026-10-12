@@ -7,12 +7,14 @@ Printers (dashboard), Constructor (own status templates), Settings, Log and Abou
 from __future__ import annotations
 
 import dataclasses
+import json
 import logging
 import os
 import queue
 import subprocess
 import sys
 import threading
+import time
 import tkinter as tk
 import tkinter.font as tkfont
 import webbrowser
@@ -27,8 +29,8 @@ from . import __version__, i18n, settings, updates, winstartup
 from .filament import filament_label
 from .i18n import LANGUAGE_NAMES, tr
 from .images import PrinterArt, icon, ring
-from .presence import BUTTON_LABEL, DEFAULT_TEMPLATES, TEMPLATE_KEYS, VARIABLES, build_activity, client_id_from, \
-    custom_options
+from .presence import (BUTTON_LABEL, BUTTON_LIMIT, HIDEABLE, TEMPLATE_KEYS, VARIABLES, PrintClock, build_activity,
+                       client_id_from, custom_options, render_lines, valid_url)
 from .printers.bambu_discovery import FoundPrinter, discover, display_name, image_key
 from .runner import Runner, status_language, validate
 from .status import PrinterStatus, State
@@ -283,34 +285,43 @@ class Field(ctk.CTkFrame):
 class SettingRow(ctk.CTkFrame):
     """Title + description on the left, a control on the right."""
 
-    def __init__(self, master: Any, title: str, desc: str = "", divider: bool = True) -> None:
+    def __init__(self, master: Any, title: str, desc: str = "", divider: bool = True, wrap: int = 480) -> None:
         super().__init__(master, fg_color="transparent")
         self.grid_columnconfigure(0, weight=1)
         if divider:
             ctk.CTkFrame(self, fg_color=BORDER, height=1, corner_radius=0).grid(
                 row=0, column=0, columnspan=2, sticky="ew")
-        text = ctk.CTkFrame(self, fg_color="transparent")
-        text.grid(row=1, column=0, sticky="w", pady=14)
-        ctk.CTkLabel(text, text=title, font=font(14, "bold"), text_color=TEXT, anchor="w").pack(anchor="w")
+        self.text = ctk.CTkFrame(self, fg_color="transparent")
+        self.text.grid(row=1, column=0, sticky="w", pady=14)
+        ctk.CTkLabel(self.text, text=title, font=font(14, "bold"), text_color=TEXT, anchor="w").pack(anchor="w")
         if desc:
-            ctk.CTkLabel(text, text=desc, font=font(12), text_color=MUTED, anchor="w", justify="left",
-                         wraplength=480).pack(anchor="w", pady=(2, 0))
+            ctk.CTkLabel(self.text, text=desc, font=font(12), text_color=MUTED, anchor="w", justify="left",
+                         wraplength=wrap).pack(anchor="w", pady=(2, 0))
         self.control_parent = self
 
     def place_control(self, widget: Any) -> Any:
         widget.grid(row=1, column=1, sticky="e", padx=(16, 0))
         return widget
 
+    def place_below(self, widget: Any) -> Any:
+        """For wide controls: under the title instead of next to it."""
+        self.text.grid_configure(pady=(14, 8))
+        widget.grid(row=2, column=0, columnspan=2, sticky="w", pady=(0, 14))
+        return widget
+
 
 class DiscordCard(ctk.CTkFrame):
     """Mock-up of the activity the way Discord draws it in a profile."""
+
+    HEADERS = {0: "home.playing", 2: "home.listening", 3: "home.watching", 5: "home.competing"}
 
     def __init__(self, master: Any, images: Images) -> None:
         super().__init__(master, fg_color=DISCORD_BG, corner_radius=12)
         self.images = images
         self.grid_columnconfigure(1, weight=1)
-        ctk.CTkLabel(self, text=tr("home.playing"), font=font(11, "bold"), text_color="#b5bac1", height=16).grid(
-            row=0, column=0, columnspan=2, sticky="w", padx=16, pady=(14, 8))
+        self.header = ctk.CTkLabel(self, text=tr("home.playing"), font=font(11, "bold"), text_color="#b5bac1",
+                                   height=16)
+        self.header.grid(row=0, column=0, columnspan=2, sticky="w", padx=16, pady=(14, 8))
         self.image = ctk.CTkLabel(self, text="")
         self.image.grid(row=1, column=0, rowspan=4, sticky="nw", padx=(16, 12))
         self.title = ctk.CTkLabel(self, text="", font=font(14, "bold"), text_color="#f2f3f5", anchor="w", height=20)
@@ -321,33 +332,90 @@ class DiscordCard(ctk.CTkFrame):
         self.state.grid(row=3, column=1, sticky="w")
         self.time = ctk.CTkLabel(self, text="", font=font(12), text_color="#23a55a", anchor="w", height=18)
         self.time.grid(row=4, column=1, sticky="nw")
-        self.button = ctk.CTkLabel(self, text=BUTTON_LABEL, font=font(13, "bold"), fg_color="#3a3c42",
-                                   corner_radius=8, text_color="#f2f3f5", height=34)
-        ctk.CTkFrame(self, fg_color="transparent", height=14).grid(row=6, column=0, columnspan=2)
+        self.buttons = [ctk.CTkLabel(self, text="", font=font(13, "bold"), fg_color="#3a3c42", corner_radius=8,
+                                     text_color="#f2f3f5", height=34) for _ in range(2)]
+        ctk.CTkFrame(self, fg_color="transparent", height=14).grid(row=7, column=0, columnspan=2)
 
     def show(self, title: str, image_key: str, activity: dict[str, Any] | None, remaining: int | None = None,
-             empty_text: str = "", button: bool = True) -> str:
+             empty_text: str = "", button: bool = True, now: float | None = None) -> str:
         """Draw the activity (or empty_text when there is none); returns a one-line summary."""
         self.title.configure(text=title)
+        labels = [BUTTON_LABEL] if button else []
         if activity is None:
+            self.header.configure(text=tr("home.playing"))
             self.image.configure(image=self.images.preview(image_key, None))
             self.details.configure(text=empty_text)
             self.state.configure(text="")
             self.time.configure(text="")
             line = empty_text
         else:
+            self.header.configure(text=tr(self.HEADERS.get(activity.get("activity_type", 0), "home.playing")))
             self.image.configure(image=self.images.preview(image_key, activity.get("small_image")))
             details, state = activity["details"].strip(), activity.get("state", "").strip()
+            party = activity.get("party_size")
+            shown_state = f"{state} ({tr('cons.party', a=party[0], b=party[1])})".strip() if party else state
             self.details.configure(text=details)
-            self.state.configure(text=state)
-            left = remaining if activity.get("end") else None
-            self.time.configure(text=tr("home.time_left", time=fmt_minutes(left)) if left else "")
+            self.state.configure(text=shown_state)
+            if activity.get("end") and remaining:
+                self.time.configure(text=tr("home.time_left", time=fmt_minutes(remaining)))
+            elif activity.get("start"):
+                spent = max(0, int(((time.time() if now is None else now) - activity["start"]) // 60))
+                self.time.configure(text=tr("home.elapsed", time=fmt_minutes(spent) if spent else "0:00"))
+            else:
+                self.time.configure(text="")
+            labels = [b["label"] for b in activity.get("buttons", [])]
             line = " · ".join(x for x in (details, state) if x)
-        if button:
-            self.button.grid(row=5, column=0, columnspan=2, sticky="ew", padx=16, pady=(12, 0))
-        else:
-            self.button.grid_remove()
+        for i, widget in enumerate(self.buttons):
+            if i < len(labels):
+                widget.configure(text=labels[i])
+                widget.grid(row=5 + i, column=0, columnspan=2, sticky="ew", padx=16, pady=(12 if i == 0 else 8, 0))
+            else:
+                widget.grid_remove()
         return line
+
+
+class TemplateField(ctk.CTkFrame):
+    """One constructor line: title (+ show/hide switch), entry, hint and a length counter."""
+
+    def __init__(self, master: Any, label: str, hint: str = "", toggle: bool = False) -> None:
+        super().__init__(master, fg_color="transparent")
+        self.grid_columnconfigure(0, weight=1)
+        ctk.CTkLabel(self, text=label, font=font(12, "bold"), text_color=TEXT_2, anchor="w").grid(
+            row=0, column=0, sticky="w")
+        self.shown: tk.BooleanVar | None = None
+        self.switch: ctk.CTkSwitch | None = None
+        if toggle:
+            self.shown = tk.BooleanVar(value=True)
+            self.switch = ctk.CTkSwitch(self, text="", variable=self.shown, width=40, switch_width=36,
+                                        switch_height=18, progress_color=GREEN, button_color="#ffffff",
+                                        button_hover_color="#e6e6e6", fg_color=SURFACE_3)
+            self.switch.grid(row=0, column=1, sticky="e")
+        self.entry = ctk.CTkEntry(self, height=38, corner_radius=10, font=font(13), fg_color=BG,
+                                  border_color=BORDER, border_width=1, text_color=TEXT)
+        self.entry.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(4, 0))
+        self.hint = ctk.CTkLabel(self, text=hint, font=font(11), text_color=FAINT, anchor="w", justify="left",
+                                 wraplength=360)
+        self.hint.grid(row=2, column=0, sticky="w", pady=(3, 0))
+        self.counter = ctk.CTkLabel(self, text="", font=font(11), text_color=FAINT, anchor="e")
+        self.counter.grid(row=2, column=1, sticky="e", pady=(3, 0))
+
+    def get(self) -> str:
+        return self.entry.get()
+
+    def set(self, value: str) -> None:
+        state = self.entry.cget("state")
+        self.entry.configure(state="normal")
+        self.entry.delete(0, "end")
+        self.entry.insert(0, value)
+        self.entry.configure(state=state)
+
+    def enable(self, on: bool, toggle: bool | None = None) -> None:
+        self.entry.configure(state="normal" if on else "disabled", text_color=TEXT if on else MUTED)
+        if self.switch is not None:
+            self.switch.configure(state="normal" if (on if toggle is None else toggle) else "disabled")
+
+    def count(self, used: int, limit: int, unit: str = "") -> None:
+        self.counter.configure(text=f"{used}/{limit}{unit}", text_color=RED if used > limit else FAINT)
 
 
 class PrinterCard(ctk.CTkFrame):
@@ -469,8 +537,9 @@ class App:
         self.log_lines: list[tuple[int, str]] = []
         self.status_line = ""
         self._push_job: str | None = None
-        self.template_entries: dict[str, Field] = {}
+        self.template_entries: dict[str, Any] = {}
         self.focused_template = "details"
+        self.clocks: list[PrintClock] = []
 
         cache = settings.settings_path().parent / "cache"
         self.art = PrinterArt(resource("assets"), cache, lambda: self.events.put(("art", None)))
@@ -730,7 +799,8 @@ class App:
         else:
             p = printers[0] if printers else self.printers[self.sel]
             s = None
-        activity = self._activity(s, printer_name(p)) if s else None
+        start = self.clocks[self.featured].start if s and self.featured < len(self.clocks) else None
+        activity = self._activity(s, printer_name(p), start) if s else None
         if not self._running():
             empty = tr("home.press_start")
         elif s is None or s.state == State.OFFLINE:
@@ -753,12 +823,12 @@ class App:
         self._show_hero()
         self._show_constructor_preview()
 
-    def _activity(self, status: PrinterStatus, name: str) -> dict[str, Any] | None:
+    def _activity(self, status: PrinterStatus, name: str, started: float | None = None) -> dict[str, Any] | None:
         """The activity with the options currently set in the window."""
         if status.state == State.IDLE and not self.show_idle.get():
             return None
         return build_activity(status, name, self._lang_code(), hide_job=self.hide_job.get(),
-                              button=self.show_button.get(), custom=self._custom_opts())
+                              button=self.show_button.get(), custom=self._custom_opts(), started=started)
 
     def open_printer(self, index: int) -> None:
         printers = self._shown_printers()
@@ -787,14 +857,33 @@ class App:
     SAMPLE = PrinterStatus(state=State.PRINTING, job_name="Benchy.3mf", progress=42, layer=87, total_layers=240,
                            remaining_min=83, nozzle_temp=220, bed_temp=65, filament="PLA Basic",
                            filament_color="161616FF")
-    SAMPLE_STATES = (State.PRINTING, State.PAUSED, State.FINISHED, State.IDLE)
+    SAMPLE_STATES = (State.PRINTING, State.PAUSED, State.FINISHED, State.FAILED, State.IDLE)
+    SAMPLE_ELAPSED_MIN = 61
+
+    def _segmented(self, master: Any, values: list[str], command) -> ctk.CTkSegmentedButton:
+        return ctk.CTkSegmentedButton(master, values=values, font=font(12), height=30, corner_radius=10,
+                                      fg_color=SURFACE_2, selected_color=SURFACE_3,
+                                      selected_hover_color=BORDER_HOVER, unselected_color=SURFACE_2,
+                                      unselected_hover_color=SURFACE_3, text_color=TEXT, command=command)
+
+    def _choice_row(self, master: Any, row: int, title: str, desc: str, options: dict[Any, str], value: Any,
+                    divider: bool = True) -> Callable[[], Any]:
+        """A setting row with a segmented choice; returns a getter of the chosen option."""
+        r = SettingRow(master, title, desc, divider=divider, wrap=420)
+        r.grid(row=row, column=0, sticky="ew")
+        seg = r.place_below(self._segmented(r, list(options.values()), lambda _v: self._on_display_change()))
+        seg.set(options.get(value, next(iter(options.values()))))
+        self.cons_choices.append(seg)
+        return lambda: next((k for k, v in options.items() if v == seg.get()), next(iter(options)))
 
     def _build_constructor(self, page: ctk.CTkFrame) -> None:
         actions = self._page_header(page, "presence", tr("page.constructor"))
         self.cons_reset = ghost_button(actions, tr("cons.reset"), self.images.icon("reset", TEXT_2, 15),
                                        self._reset_templates)
         self.cons_reset.grid(row=0, column=0)
-        custom = custom_options(self.cfg.get("presence"))
+        self.cons = custom_options(self.cfg.get("presence"))
+        self.cons_choices: list[ctk.CTkSegmentedButton] = []
+        self.edit_state = "all"
 
         wrap = ctk.CTkFrame(page, fg_color="transparent")
         wrap.grid(row=1, column=0, sticky="nsew", padx=(20, 12), pady=(0, 16))
@@ -806,24 +895,73 @@ class App:
         body = ctk.CTkScrollableFrame(wrap, fg_color="transparent")
         body.grid(row=0, column=0, sticky="nsew")
         body.grid_columnconfigure(0, weight=1)
-        top = self._section(body, 0, tr("cons.lines"))
-        r = SettingRow(top, tr("cons.custom"), tr("desc.cons_custom"), divider=False)
-        r.grid(row=0, column=0, sticky="ew")
-        self.custom_on = self._switch(r, bool(custom["enabled"]), self._on_custom_toggle)
-        hints = {"details": "", "state": "", "large_text": tr("cons.hover_hint"), "small_text": tr("cons.hover_hint")}
-        self.template_entries = {}
-        for i, key in enumerate(TEMPLATE_KEYS):
-            f = Field(top, tr(f"cons.{key}"), hints[key])
-            f.grid(row=1 + i, column=0, sticky="ew", pady=(4 if i == 0 else 10, 12 if i == 3 else 0))
-            f.set(str(custom.get(key, "")))
-            f.entry.bind("<KeyRelease>", lambda _e: self._presence_changed(), add="+")
-            f.entry.bind("<FocusIn>", lambda _e, k=key: setattr(self, "focused_template", k), add="+")
-            self.template_entries[key] = f
-        r = SettingRow(top, tr("cons.timer"), tr("desc.cons_timer"))
-        r.grid(row=5, column=0, sticky="ew")
-        self.custom_timer = self._switch(r, bool(custom["timer"]), self._presence_changed)
 
-        vc = self._section(body, 2, tr("cons.vars"))
+        # Lines
+        top = self._section(body, 0, tr("cons.lines"))
+        r = SettingRow(top, tr("cons.custom"), tr("desc.cons_custom"), divider=False, wrap=380)
+        r.grid(row=0, column=0, sticky="ew")
+        self.custom_on = self._switch(r, bool(self.cons["enabled"]), self._on_custom_toggle)
+        r = SettingRow(top, tr("cons.text_for"), tr("desc.cons_text_for"), wrap=420)
+        r.grid(row=1, column=0, sticky="ew")
+        self.edit_names = {"all": tr("cons.all"), **{st.value: tr(f"sample.{st.value}") for st in self.SAMPLE_STATES}}
+        self.cons_edit = r.place_below(self._segmented(r, list(self.edit_names.values()), self._on_edit_state))
+        self.cons_edit.set(self.edit_names["all"])
+        self.override_row = SettingRow(top, tr("cons.own_state"), tr("desc.cons_own_state"), wrap=380)
+        self.override_on = self._switch(self.override_row, False, self._on_override_toggle)
+        hints = {"details": tr("desc.cons_details"), "state": "", "large_text": tr("cons.hover_hint"),
+                 "small_text": tr("cons.hover_hint")}
+        self.template_entries: dict[str, TemplateField] = {}
+        for i, key in enumerate(TEMPLATE_KEYS):
+            f = TemplateField(top, tr(f"cons.{key}"), hints[key], toggle=key in HIDEABLE)
+            f.grid(row=3 + i, column=0, sticky="ew", pady=(6 if i == 0 else 12, 16 if i == 3 else 0))
+            f.entry.bind("<KeyRelease>", lambda _e, k=key: self._on_template_edit(k), add="+")
+            f.entry.bind("<FocusIn>", lambda _e, k=key: setattr(self, "focused_template", k), add="+")
+            if f.shown is not None:
+                f.shown.set(key not in self.cons["hidden"])
+                f.switch.configure(command=self._on_display_change)
+            self.template_entries[key] = f
+
+        # How the status is shown
+        dc = self._section(body, 2, tr("cons.display"))
+        self.get_timer = self._choice_row(dc, 0, tr("cons.timer"), tr("desc.cons_timer"), {
+            "remaining": tr("cons.timer_remaining"), "elapsed": tr("cons.timer_elapsed"),
+            "none": tr("cons.none")}, self.cons["timer"], divider=False)
+        self.get_party = self._choice_row(dc, 1, tr("cons.party_title"), tr("desc.cons_party"), {
+            "none": tr("cons.none"), "layers": tr("cons.party_layers"), "progress": tr("cons.party_progress")},
+            self.cons["party"])
+        r = SettingRow(dc, tr("cons.badge"), tr("desc.cons_badge"), wrap=380)
+        r.grid(row=2, column=0, sticky="ew")
+        self.badge_on = self._switch(r, "small_image" not in self.cons["hidden"], self._on_display_change)
+        self.badge_switch = r.winfo_children()[-1]
+        self.get_type = self._choice_row(dc, 3, tr("cons.type"), tr("desc.cons_type"), {
+            0: tr("type.playing"), 3: tr("type.watching"), 2: tr("type.listening"), 5: tr("type.competing")},
+            self.cons["activity_type"])
+        self.get_display = self._choice_row(dc, 4, tr("cons.member_list"), tr("desc.cons_member_list"), {
+            "name": tr("cons.show_name"), "details": tr("cons.show_details"), "state": tr("cons.show_state")},
+            self.cons["status_display"])
+
+        # Own button
+        bc = self._section(body, 4, tr("cons.button"))
+        r = SettingRow(bc, tr("cons.button_on"), tr("desc.cons_button"), divider=False, wrap=380)
+        r.grid(row=0, column=0, sticky="ew")
+        self.button_on = self._switch(r, bool(self.cons["button_on"]), self._on_display_change)
+        self.button_switch = r.winfo_children()[-1]
+        self.f_button_label = TemplateField(bc, tr("cons.button_label"), tr("desc.cons_button_label"))
+        self.f_button_label.grid(row=1, column=0, sticky="ew", pady=(4, 0))
+        self.f_button_label.set(str(self.cons["button_label"]))
+        self.f_button_url = TemplateField(bc, tr("cons.button_url"), "")
+        self.f_button_url.grid(row=2, column=0, sticky="ew", pady=(12, 16))
+        self.f_button_url.set(str(self.cons["button_url"]))
+        self.f_button_url.entry.configure(placeholder_text="https://makerworld.com/…")
+        if not self.cons["button_url"]:
+            getattr(self.f_button_url.entry, "_activate_placeholder", lambda: None)()
+        for f, key in ((self.f_button_label, "button_label"), (self.f_button_url, "button_url")):
+            f.entry.bind("<KeyRelease>", lambda _e, k=key, fld=f: self._on_button_edit(k, fld), add="+")
+        self.f_button_label.entry.bind("<FocusIn>", lambda _e: setattr(self, "focused_template", "button_label"),
+                                       add="+")
+
+        # Variables
+        vc = self._section(body, 6, tr("cons.vars"))
         ctk.CTkLabel(vc, text=tr("cons.vars_hint"), font=font(12), text_color=MUTED, anchor="w", justify="left",
                      wraplength=430).grid(row=0, column=0, sticky="w", pady=(10, 8))
         chips = ctk.CTkFrame(vc, fg_color="transparent")
@@ -845,84 +983,176 @@ class App:
         inner.grid_columnconfigure(0, weight=1)
         section_label(inner, tr("cons.preview")).grid(row=0, column=0, sticky="w")
         self.cons_live = ctk.CTkLabel(inner, text="", font=font(12, "bold"), anchor="w", justify="left",
-                                      wraplength=320)
+                                      wraplength=270)
         self.cons_live.grid(row=1, column=0, sticky="w", pady=(4, 10))
         names = [tr("cons.now")] + [tr(f"sample.{st.value}") for st in self.SAMPLE_STATES]
-        self.cons_sample = ctk.CTkSegmentedButton(
-            inner, values=names, font=font(11), height=30, corner_radius=10, fg_color=SURFACE_2,
-            selected_color=SURFACE_3, selected_hover_color=BORDER_HOVER, unselected_color=SURFACE_2,
-            unselected_hover_color=SURFACE_3, text_color=TEXT, command=lambda _v: self._show_constructor_preview())
+        pick = ctk.CTkFrame(inner, fg_color="transparent")
+        pick.grid(row=2, column=0, sticky="ew", pady=(0, 12))
+        pick.grid_columnconfigure(1, weight=1)
+        ctk.CTkLabel(pick, text=tr("cons.preview_as"), font=font(12), text_color=MUTED).grid(
+            row=0, column=0, padx=(0, 10))
+        self.cons_sample = ctk.CTkOptionMenu(
+            pick, values=names, font=font(12), dropdown_font=font(12), height=30, corner_radius=10,
+            fg_color=SURFACE_2, button_color=SURFACE_3, button_hover_color=BORDER_HOVER, text_color=TEXT,
+            dropdown_fg_color=SURFACE_2, dropdown_hover_color=SURFACE_3, dropdown_text_color=TEXT,
+            command=lambda _v: self._show_constructor_preview())
         self.cons_sample.set(names[0])
-        self.cons_sample.grid(row=2, column=0, sticky="ew", pady=(0, 12))
+        self.cons_sample.grid(row=0, column=1, sticky="ew")
         self.cons_card = DiscordCard(inner, self.images)
         self.cons_card.grid(row=3, column=0, sticky="ew")
         self.cons_hover = ctk.CTkLabel(inner, text="", font=font(12), text_color=MUTED, anchor="w", justify="left",
-                                       wraplength=320)
+                                       wraplength=270)
         self.cons_hover.grid(row=4, column=0, sticky="w", pady=(12, 0))
         self.cons_source = ctk.CTkLabel(inner, text="", font=font(11), text_color=FAINT, anchor="w")
         self.cons_source.grid(row=5, column=0, sticky="w", pady=(6, 0))
-        self._update_template_state()
+        self._load_template_fields()
+
+    # Constructor state
 
     def _custom_opts(self) -> dict[str, Any]:
         if not self.template_entries:
             return custom_options(self.cfg.get("presence"))
-        opts = {k: f.entry.get() for k, f in self.template_entries.items()}
-        opts.update(enabled=self.custom_on.get(), timer=self.custom_timer.get())
-        return opts
+        c = self.cons
+        c["enabled"] = self.custom_on.get()
+        hidden = [k for k, f in self.template_entries.items() if f.shown is not None and not f.shown.get()]
+        if not self.badge_on.get():
+            hidden.append("small_image")
+        c.update(hidden=hidden, timer=self.get_timer(), party=self.get_party(), activity_type=self.get_type(),
+                 status_display=self.get_display(), button_on=self.button_on.get())
+        return json.loads(json.dumps(c))
+
+    def _template_target(self) -> dict[str, Any] | None:
+        """Where the edited lines are stored: the main templates or the selected state's own ones."""
+        if self.edit_state == "all":
+            return self.cons
+        return self.cons["overrides"].get(self.edit_state)
+
+    def _load_template_fields(self) -> None:
+        own = self.edit_state != "all" and self.edit_state in self.cons["overrides"]
+        if self.edit_state == "all":
+            self.override_row.grid_remove()
+        else:
+            self.override_row.grid(row=2, column=0, sticky="ew")
+            self.override_on.set(own)
+        source = self._template_target() or self.cons
+        for key, f in self.template_entries.items():
+            f.set(str(source.get(key, self.cons.get(key, ""))))
+        self._update_template_state()
 
     def _update_template_state(self) -> None:
         on = self.custom_on.get()
+        editable = on and (self.edit_state == "all" or self.edit_state in self.cons["overrides"])
         for f in self.template_entries.values():
-            f.enable(on)
+            f.enable(editable, toggle=on)
+        if not self.badge_on.get():
+            self.template_entries["small_text"].enable(editable, toggle=False)
         for chip in self.var_chips:
             chip.configure(state="normal" if on else "disabled")
-        self.cons_reset.configure(state="normal" if on else "disabled")
+        for w in (self.cons_reset, self.cons_edit, self.badge_switch, self.button_switch, *self.cons_choices):
+            w.configure(state="normal" if on else "disabled")
+        self.override_row.winfo_children()[-1].configure(state="normal" if on else "disabled")
+        button = on and self.button_on.get()
+        self.f_button_label.enable(button)
+        self.f_button_url.enable(button)
 
     def _on_custom_toggle(self) -> None:
         self._update_template_state()
         self._presence_changed()
 
-    def _insert_variable(self, var: str) -> None:
-        entry = self.template_entries[self.focused_template].entry
-        entry.insert("insert", "{" + var + "}")
-        entry.focus_set()
+    def _on_edit_state(self, value: str) -> None:
+        self.edit_state = next((k for k, v in self.edit_names.items() if v == value), "all")
+        if self.edit_state != "all":
+            self.cons_sample.set(value)  # preview the state being edited
+        self._load_template_fields()
+        self._show_constructor_preview()
+
+    def _on_override_toggle(self) -> None:
+        if self.override_on.get():
+            self.cons["overrides"][self.edit_state] = {k: self.cons[k] for k in TEMPLATE_KEYS}
+        else:
+            self.cons["overrides"].pop(self.edit_state, None)
+        self._load_template_fields()
         self._presence_changed()
+
+    def _on_template_edit(self, key: str) -> None:
+        target = self._template_target()
+        if target is not None:
+            target[key] = self.template_entries[key].get()
+        self._presence_changed()
+
+    def _on_button_edit(self, key: str, field: TemplateField) -> None:
+        self.cons[key] = field.get().strip()
+        self._presence_changed()
+
+    def _on_display_change(self) -> None:
+        self._update_template_state()
+        self._presence_changed()
+
+    def _insert_variable(self, var: str) -> None:
+        if self.focused_template == "button_label":
+            field = self.f_button_label
+        else:
+            field = self.template_entries[self.focused_template]
+        if field.entry.cget("state") == "disabled":
+            return
+        field.entry.insert("insert", "{" + var + "}")
+        field.entry.focus_set()
+        if self.focused_template == "button_label":
+            self._on_button_edit("button_label", field)
+        else:
+            self._on_template_edit(self.focused_template)
 
     def _reset_templates(self) -> None:
-        for key, f in self.template_entries.items():
-            f.set(DEFAULT_TEMPLATES[key])
-        self.custom_timer.set(DEFAULT_TEMPLATES["timer"])
+        """Back to the defaults for the lines being edited (or everything when editing all states)."""
+        if self.edit_state == "all":
+            enabled = self.custom_on.get()
+            self.cons = custom_options({})
+            self.cons["enabled"] = enabled
+            for f in self.template_entries.values():
+                if f.shown is not None:
+                    f.shown.set(True)
+            self.badge_on.set(True)
+            self.button_on.set(False)
+            self.f_button_label.set("")
+            self.f_button_url.set("")
+            for seg, value in zip(self.cons_choices, (tr("cons.timer_remaining"), tr("cons.none"),
+                                                      tr("type.playing"), tr("cons.show_name"))):
+                seg.set(value)
+        else:
+            self.cons["overrides"].pop(self.edit_state, None)
+        self._load_template_fields()
         self._presence_changed()
 
-    def _preview_source(self) -> tuple[dict[str, Any], PrinterStatus, bool]:
-        """Printer and status for the constructor preview; the bool says whether it is real data."""
+    # Constructor preview
+
+    def _preview_source(self) -> tuple[dict[str, Any], PrinterStatus, float | None, bool]:
+        """Printer, status and print start for the preview; the bool says whether it is real data."""
         printers = self._shown_printers()
         printer = printers[0] if printers else self.printers[self.sel]
+        sample_start = time.time() - self.SAMPLE_ELAPSED_MIN * 60
         choice = self.cons_sample.get()
         if choice == tr("cons.now"):
             if self._running() and self.statuses and self.featured < len(printers):
-                return printers[self.featured], self.statuses[self.featured], True
-            return printer, self.SAMPLE, False
+                start = self.clocks[self.featured].start if self.featured < len(self.clocks) else None
+                return printers[self.featured], self.statuses[self.featured], start, True
+            return printer, self.SAMPLE, sample_start, False
         state = next((st for st in self.SAMPLE_STATES if tr(f"sample.{st.value}") == choice), State.PRINTING)
-        if state == State.PRINTING:
-            return printer, self.SAMPLE, False
-        if state == State.PAUSED:
-            return printer, dataclasses.replace(self.SAMPLE, state=state), False
-        if state == State.FINISHED:
-            return printer, dataclasses.replace(self.SAMPLE, state=state, progress=100, layer=240,
-                                                remaining_min=0, nozzle_temp=48, bed_temp=40), False
+        if state in (State.PRINTING, State.PAUSED):
+            return printer, dataclasses.replace(self.SAMPLE, state=state), sample_start, False
+        if state in (State.FINISHED, State.FAILED):
+            done = state == State.FINISHED
+            return printer, dataclasses.replace(self.SAMPLE, state=state, progress=100 if done else 42,
+                                                layer=240 if done else 87, remaining_min=0, nozzle_temp=48,
+                                                bed_temp=40), None, False
         return printer, PrinterStatus(state=State.IDLE, nozzle_temp=27, bed_temp=25, filament="PLA Basic",
-                                      filament_color="161616FF"), False
+                                      filament_color="161616FF"), None, False
 
     def _show_constructor_preview(self) -> None:
-        if not hasattr(self, "cons_card"):
+        if not hasattr(self, "cons_card") or not self.template_entries:
             return
-        p, s, real = self._preview_source()
-        activity = self._activity(s, printer_name(p))
-        if s.state == State.OFFLINE:
-            empty = tr("home.hidden")
-        else:
-            empty = tr("strip.off")
+        p, s, start, real = self._preview_source()
+        activity = self._activity(s, printer_name(p), start)
+        empty = tr("home.hidden") if s.state == State.OFFLINE else tr("strip.off")
         self.cons_card.show(printer_name(p), printer_image(p), activity, s.remaining_min, empty,
                             self.show_button.get())
         hover = []
@@ -930,11 +1160,28 @@ class App:
             hover.append(tr("cons.hover_large", text=activity["large_text"].strip()))
         if activity and activity.get("small_text"):
             hover.append(tr("cons.hover_small", text=activity["small_text"].strip()))
-        self.cons_hover.configure(text="\n".join(hover))
+        if activity:
+            shown = {"details": activity["details"], "state": activity.get("state", "")}.get(
+                activity.get("status_display_type", ""), "") or tr("cons.app_name")
+            hover.append(tr("cons.member_line", text=f"{self.cons_card.header.cget('text').capitalize()} "
+                                                     f"{shown.strip()}"))
         self.cons_source.configure(text="" if real else tr("cons.sample"))
+        self.cons_hover.configure(text="\n".join(hover))
+        self._update_counters(p, s)
         if not self._push_job:
             self.cons_live.configure(text=tr("cons.live_on") if self._running() else tr("cons.live_off"),
                                      text_color=GREEN if self._running() else MUTED)
+
+    def _update_counters(self, p: dict[str, Any], s: PrinterStatus) -> None:
+        lines = render_lines(s, printer_name(p), self._lang_code(), self._custom_opts(), hide_job=self.hide_job.get())
+        for key, f in self.template_entries.items():
+            f.count(len(lines[key]), 128)
+        label = lines["button_label"].strip()
+        self.f_button_label.count(len(label.encode("utf-8")), BUTTON_LIMIT, " B")
+        url = self.f_button_url.get().strip()
+        bad_url = bool(url) and not valid_url(url)
+        self.f_button_url.hint.configure(text=tr("cons.bad_url") if bad_url else tr("desc.cons_button_url"),
+                                         text_color=AMBER if bad_url else FAINT)
 
     def _presence_changed(self) -> None:
         """Any status option changed: redraw previews now, send to Discord after a short pause in typing."""
@@ -1408,6 +1655,7 @@ class App:
         self.art.use_app(client_id_from(cfg))
         self.run_printers = [dict(p) for p in cfg["printers"]]
         self.statuses = []
+        self.clocks = []
         self.featured = 0
         self.runner = Runner(cfg, on_status=lambda s, f, d: self.events.put(("status", (s, f, d))))
         self.runner.start()
@@ -1448,6 +1696,10 @@ class App:
         if not self._running() or not statuses:
             return
         self.statuses, self.featured, self.discord_ok = statuses, featured, discord_ok
+        while len(self.clocks) < len(statuses):
+            self.clocks.append(PrintClock())
+        for clock, st in zip(self.clocks, statuses):
+            clock.update(st)
         self._refresh_view()
         status = statuses[featured]
         if status.state == State.OFFLINE:

@@ -8,7 +8,8 @@ import time
 from typing import Any, Callable
 
 from .i18n import LANGUAGES, resolve, tr
-from .presence import DEFAULT_CLIENT_ID, DiscordPresence, build_activity, client_id_from, custom_options
+from .presence import (DEFAULT_CLIENT_ID, DiscordPresence, PrintClock, build_activity, client_id_from,
+                       custom_options)
 from .printers import create_printer
 from .settings import migrate
 from .status import PrinterStatus, State
@@ -125,6 +126,7 @@ class Runner:
         client_id = client_id_from(cfg)
         discord = DiscordPresence(client_id)
         images = [self._large_image(client_id, p) for p in configs]
+        clocks = [PrintClock() for _ in printers]
         featured = 0
         last_sent = 0.0
         for printer in printers:
@@ -146,13 +148,15 @@ class Runner:
                     next_poll = time.monotonic() + interval
                 opts = self._opts
                 statuses = [p.status() for p in printers]
+                starts = [clock.update(st) for clock, st in zip(clocks, statuses)]
                 featured = pick_featured(statuses, featured)
                 status = statuses[featured]
                 activity = None
                 if status.state != State.IDLE or opts["show_idle"]:
                     activity = build_activity(status, printers[featured].name, opts["lang"],
                                               large_image=images[featured], hide_job=opts["hide_job"],
-                                              button=opts["button"], custom=opts["custom"])
+                                              button=opts["button"], custom=opts["custom"],
+                                              started=starts[featured])
                 discord.set(activity)
                 last_sent = time.monotonic()
                 if self.on_status:

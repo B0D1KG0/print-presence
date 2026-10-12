@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 import time
@@ -9,6 +10,7 @@ from typing import Any
 
 from pypresence import Presence
 from pypresence.exceptions import PyPresenceException
+from pypresence.types import ActivityType, StatusDisplayType
 
 from .filament import color_name, filament_label
 from .i18n import tr
@@ -105,13 +107,30 @@ def _clip(text: str) -> str:
 # [square brackets] disappears when any value inside it is empty, e.g. "{status}[: {job}]".
 
 TEMPLATE_KEYS = ("details", "state", "large_text", "small_text")
+# Parts of the status that can be switched off; the first line is always shown.
+HIDEABLE = ("state", "large_text", "small_text", "small_image")
+# States that can have their own text; the others (preparing) use the main templates.
+OVERRIDE_STATES = (State.PRINTING, State.PAUSED, State.FINISHED, State.FAILED, State.IDLE)
+TIMERS = ("remaining", "elapsed", "none")
+PARTIES = ("none", "layers", "progress")
+ACTIVITY_TYPES = (0, 3, 2, 5)  # Playing, Watching, Listening, Competing — the ones Discord supports
+STATUS_DISPLAYS = ("name", "details", "state")  # what the member list shows after "Playing"
+BUTTON_LIMIT = 32  # bytes
 DEFAULT_TEMPLATES: dict[str, Any] = {
     "enabled": False,
     "details": "{status}[: {job}]",
     "state": "[{layer}][ · {progress}]",
     "large_text": "{printer}[ · {filament}]",
     "small_text": "{temps}",
-    "timer": True,
+    "overrides": {},  # state -> its own {details, state, large_text, small_text}
+    "hidden": [],
+    "timer": "remaining",
+    "party": "none",
+    "activity_type": 0,
+    "status_display": "name",
+    "button_on": False,
+    "button_label": "",
+    "button_url": "",
 }
 VARIABLES = ("status", "job", "layer", "progress", "remaining", "eta", "filament", "material", "color",
              "nozzle", "bed", "temps", "printer", "layer_num", "total_layers")
@@ -124,10 +143,70 @@ _SEPARATORS = " ·|:,–—"
 def custom_options(presence: dict[str, Any] | None) -> dict[str, Any]:
     """Constructor settings with the defaults filled in."""
     stored = (presence or {}).get("custom")
-    opts = dict(DEFAULT_TEMPLATES)
+    opts = json.loads(json.dumps(DEFAULT_TEMPLATES))  # deep copy
     if isinstance(stored, dict):
         opts.update({k: v for k, v in stored.items() if k in DEFAULT_TEMPLATES})
+    if isinstance(opts["timer"], bool):  # v0.9.0 had an on/off switch
+        opts["timer"] = "remaining" if opts["timer"] else "none"
+    if opts["timer"] not in TIMERS:
+        opts["timer"] = "remaining"
+    if opts["party"] not in PARTIES:
+        opts["party"] = "none"
+    if opts["activity_type"] not in ACTIVITY_TYPES:
+        opts["activity_type"] = 0
+    if opts["status_display"] not in STATUS_DISPLAYS:
+        opts["status_display"] = "name"
+    if not isinstance(opts["overrides"], dict):
+        opts["overrides"] = {}
+    opts["overrides"] = {k: v for k, v in opts["overrides"].items()
+                         if k in {st.value for st in OVERRIDE_STATES} and isinstance(v, dict)}
+    if not isinstance(opts["hidden"], list):
+        opts["hidden"] = []
     return opts
+
+
+def templates_for(custom: dict[str, Any], state: State) -> dict[str, str]:
+    """Line templates used for this printer state (its own ones, if set)."""
+    own = (custom.get("overrides") or {}).get(state.value)
+    source = own if isinstance(own, dict) else custom
+    return {k: str(source.get(k, custom.get(k, "")) or "") for k in TEMPLATE_KEYS}
+
+
+def fit_bytes(text: str, limit: int = BUTTON_LIMIT) -> str:
+    """Cut text to Discord's byte limit without breaking a character."""
+    data = text.encode("utf-8")
+    if len(data) <= limit:
+        return text
+    return data[:limit].decode("utf-8", "ignore").rstrip()
+
+
+def valid_url(url: str) -> bool:
+    return bool(re.fullmatch(r"https?://[^\s/$.?#][^\s]*", url or "")) and len(url) <= 512
+
+
+class PrintClock:
+    """Remembers when the current print started — the printer doesn't report it.
+
+    If the app starts in the middle of a print, the start is estimated from progress and time left.
+    """
+
+    def __init__(self) -> None:
+        self.job: str | None = None
+        self.start: float | None = None
+
+    def update(self, status: PrinterStatus, now: float | None = None) -> float | None:
+        now = time.time() if now is None else now
+        if status.state not in (State.PRINTING, State.PAUSED):
+            if status.state != State.OFFLINE:  # a short connection drop keeps the clock
+                self.job, self.start = None, None
+            return None
+        if self.start is None or status.job_name != self.job:
+            self.job = status.job_name
+            elapsed = 0.0
+            if status.progress and status.remaining_min and status.progress < 100:
+                elapsed = status.remaining_min * status.progress / (100 - status.progress)
+            self.start = (now - elapsed * 60) // 60 * 60
+        return self.start
 
 
 def render_template(template: str, values: dict[str, str]) -> str:
@@ -196,25 +275,65 @@ def template_values(status: PrinterStatus, printer_name: str, lang: str = "en", 
     }
 
 
-def _custom_activity(status: PrinterStatus, printer_name: str, lang: str, now: float, large_image: str,
-                     hide_job: bool, button: bool, custom: dict[str, Any]) -> dict[str, Any]:
+def render_lines(status: PrinterStatus, printer_name: str, lang: str, custom: dict[str, Any],
+                 now: float | None = None, hide_job: bool = False) -> dict[str, str]:
+    """Rendered text of every line (before Discord's limits are applied)."""
     values = template_values(status, printer_name, lang, now, hide_job)
-    lines = {k: render_template(str(custom.get(k, "")), values) for k in TEMPLATE_KEYS}
+    lines = {k: render_template(v, values) for k, v in templates_for(custom, status.state).items()}
+    lines["button_label"] = render_template(str(custom.get("button_label", "")), values)
+    return lines
+
+
+def _custom_activity(status: PrinterStatus, printer_name: str, lang: str, now: float, large_image: str,
+                     hide_job: bool, button: bool, custom: dict[str, Any],
+                     started: float | None) -> dict[str, Any]:
+    t = TEXTS.get(lang, TEXTS["en"])
+    lines = render_lines(status, printer_name, lang, custom, now, hide_job)
+    hidden = set(custom.get("hidden") or ())
     activity: dict[str, Any] = {
         "name": printer_name,
-        "details": _clip(lines["details"] or values["status"]),
+        "details": _clip(lines["details"] or t[status.state]),
         "large_image": large_image,
-        "small_image": SMALL_IMAGES[status.state],
-        "small_text": lines["small_text"] or values["status"],
     }
-    if lines["state"]:
+    if "small_image" not in hidden:
+        activity["small_image"] = SMALL_IMAGES[status.state]
+        if "small_text" not in hidden:
+            activity["small_text"] = _clip(lines["small_text"] or t[status.state])
+    if lines["state"] and "state" not in hidden:
         activity["state"] = _clip(lines["state"])
-    if lines["large_text"]:
+    if lines["large_text"] and "large_text" not in hidden:
         activity["large_text"] = _clip(lines["large_text"])
+
+    buttons = []
+    label = fit_bytes(lines["button_label"].strip())
+    if custom.get("button_on") and label and valid_url(str(custom.get("button_url", "")).strip()):
+        buttons.append({"label": label, "url": str(custom["button_url"]).strip()})
     if button:
-        activity["buttons"] = [{"label": BUTTON_LABEL, "url": REPO_URL}]
-    if custom.get("timer", True) and status.state == State.PRINTING and status.remaining_min:
+        buttons.append({"label": BUTTON_LABEL, "url": REPO_URL})
+    if buttons:
+        activity["buttons"] = buttons[:2]
+
+    printing = status.state == State.PRINTING
+    timer = custom.get("timer", "remaining")
+    if timer == "remaining" and printing and status.remaining_min:
         activity["end"] = int((now + status.remaining_min * 60) // 60 * 60)
+    elif timer == "elapsed" and printing and started:
+        activity["start"] = int(started)
+
+    party = custom.get("party", "none")
+    if status.state in (State.PRINTING, State.PAUSED):
+        size = None
+        if party == "layers" and status.layer and status.total_layers and status.layer <= status.total_layers:
+            size = [status.layer, status.total_layers]
+        elif party == "progress" and status.progress and 0 < status.progress <= 100:
+            size = [status.progress, 100]
+        if size:
+            activity["party_id"] = "print-presence"
+            activity["party_size"] = size
+    if custom.get("activity_type", 0) in ACTIVITY_TYPES[1:]:
+        activity["activity_type"] = custom["activity_type"]
+    if custom.get("status_display") in ("details", "state"):
+        activity["status_display_type"] = custom["status_display"]
     return activity
 
 
@@ -227,16 +346,18 @@ def build_activity(
     hide_job: bool = False,
     button: bool = True,
     custom: dict[str, Any] | None = None,
+    started: float | None = None,
 ) -> dict[str, Any] | None:
     """Return pypresence.update() kwargs, or None to clear the presence.
 
     custom: constructor settings (see DEFAULT_TEMPLATES); used when custom["enabled"] is set.
+    started: when the current print started (PrintClock), for the "elapsed" timer.
     """
     if status.state == State.OFFLINE:
         return None
     now = time.time() if now is None else now
     if custom and custom.get("enabled"):
-        return _custom_activity(status, printer_name, lang, now, large_image, hide_job, button, custom)
+        return _custom_activity(status, printer_name, lang, now, large_image, hide_job, button, custom, started)
     t = TEXTS.get(lang, TEXTS["en"])
     job = t["calibration"] if status.calibration else (status.job_name or "")
     if hide_job and not status.calibration:
@@ -296,7 +417,13 @@ def discord_payload(activity: dict[str, Any]) -> dict[str, Any]:
     but doesn't pass such an activity on to other people. The status title always comes from
     the Discord application name.
     """
-    return {k: v for k, v in activity.items() if k != "name"}
+    payload = {k: v for k, v in activity.items() if k != "name"}
+    if "activity_type" in payload:
+        payload["activity_type"] = ActivityType(payload["activity_type"])
+    if "status_display_type" in payload:
+        payload["status_display_type"] = {"state": StatusDisplayType.STATE,
+                                          "details": StatusDisplayType.DETAILS}[payload["status_display_type"]]
+    return payload
 
 
 class DiscordPresence:
