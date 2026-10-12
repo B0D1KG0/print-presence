@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import logging
 import threading
+import time
 from typing import Any, Callable
 
 from .i18n import LANGUAGES, resolve, tr
-from .presence import DEFAULT_CLIENT_ID, DiscordPresence, build_activity, client_id_from
+from .presence import DEFAULT_CLIENT_ID, DiscordPresence, build_activity, client_id_from, custom_options
 from .printers import create_printer
 from .settings import migrate
 from .status import PrinterStatus, State
@@ -16,6 +17,9 @@ log = logging.getLogger(__name__)
 
 # Discord rate-limits presence updates to about one per 15 seconds.
 MIN_INTERVAL_S = 15
+# Changes made in the constructor are sent right away, but Discord allows only
+# about 5 updates per 20 seconds, so keep at least this gap between them.
+LIVE_GAP_S = 4
 
 # Which printer is shown in Discord when there are several: the busiest one.
 PRIORITY = {
@@ -52,6 +56,18 @@ def status_language(status_choice: str | None, ui_choice: str | None) -> str:
     return resolve(status_choice if status_choice in LANGUAGES else ui_choice)
 
 
+def presence_options(cfg: dict[str, Any]) -> dict[str, Any]:
+    """What the status looks like; can be changed while running (see Runner.update_presence)."""
+    opts = cfg.get("presence", {})
+    return {
+        "lang": status_language(opts.get("language"), cfg.get("app", {}).get("language")),
+        "show_idle": opts.get("show_when_idle", True),
+        "hide_job": opts.get("hide_job", False),
+        "button": opts.get("button", True),
+        "custom": custom_options(opts),
+    }
+
+
 def pick_featured(statuses: list[PrinterStatus], current: int = 0) -> int:
     """Index of the printer to show; keeps the current one while it's as busy as the busiest."""
     best = max(PRIORITY[s.state] for s in statuses)
@@ -66,6 +82,8 @@ class Runner:
         self.cfg = cfg
         self.on_status = on_status
         self._stop = threading.Event()
+        self._wake = threading.Event()
+        self._opts = presence_options(cfg)
         self._thread: threading.Thread | None = None
 
     @property
@@ -77,8 +95,14 @@ class Runner:
         self._thread = threading.Thread(target=self._run, name="print-presence", daemon=True)
         self._thread.start()
 
+    def update_presence(self, cfg: dict[str, Any]) -> None:
+        """Apply new status options (constructor, switches, language) without restarting."""
+        self._opts = presence_options(cfg)
+        self._wake.set()
+
     def stop(self, timeout: float | None = 5) -> None:
         self._stop.set()
+        self._wake.set()
         if self._thread:
             self._thread.join(timeout)
 
@@ -94,12 +118,7 @@ class Runner:
 
     def _loop(self) -> None:
         cfg = self.cfg
-        opts = cfg.get("presence", {})
-        lang = status_language(opts.get("language"), cfg.get("app", {}).get("language"))
-        show_idle = opts.get("show_when_idle", True)
-        hide_job = opts.get("hide_job", False)
-        button = opts.get("button", True)
-        interval = max(MIN_INTERVAL_S, int(opts.get("update_interval", MIN_INTERVAL_S)))
+        interval = max(MIN_INTERVAL_S, int(cfg.get("presence", {}).get("update_interval", MIN_INTERVAL_S)))
 
         configs = printer_configs(cfg)
         printers = [create_printer(p) for p in configs]
@@ -107,21 +126,35 @@ class Runner:
         discord = DiscordPresence(client_id)
         images = [self._large_image(client_id, p) for p in configs]
         featured = 0
+        last_sent = 0.0
         for printer in printers:
             printer.start()
         try:
             # First update after a short pause so the printers have time to answer.
-            wait = 3.0
-            while not self._stop.wait(wait):
-                wait = interval
+            next_poll = time.monotonic() + 3
+            while True:
+                changed = self._wake.wait(max(0.0, next_poll - time.monotonic()))
+                if self._stop.is_set():
+                    break
+                if changed:
+                    self._wake.clear()
+                    gap = last_sent + LIVE_GAP_S - time.monotonic()
+                    if gap > 0 and self._stop.wait(gap):
+                        break
+                    self._wake.clear()  # changes made during the gap are picked up now
+                else:
+                    next_poll = time.monotonic() + interval
+                opts = self._opts
                 statuses = [p.status() for p in printers]
                 featured = pick_featured(statuses, featured)
                 status = statuses[featured]
                 activity = None
-                if status.state != State.IDLE or show_idle:
-                    activity = build_activity(status, printers[featured].name, lang, large_image=images[featured],
-                                              hide_job=hide_job, button=button)
+                if status.state != State.IDLE or opts["show_idle"]:
+                    activity = build_activity(status, printers[featured].name, opts["lang"],
+                                              large_image=images[featured], hide_job=opts["hide_job"],
+                                              button=opts["button"], custom=opts["custom"])
                 discord.set(activity)
+                last_sent = time.monotonic()
                 if self.on_status:
                     self.on_status(statuses, featured, discord.connected)
         finally:

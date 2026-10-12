@@ -172,6 +172,18 @@ def icon(name: str, color: str, size: int = 20) -> Image.Image:
         cx = s / 2
         d.ellipse((cx - w * 0.8, s * 0.3 - w * 0.8, cx + w * 0.8, s * 0.3 + w * 0.8), fill=color)
         d.line((cx, s * 0.43, cx, s * 0.7), fill=color, width=w)
+    elif name == "presence":  # status card: avatar + two lines
+        d.rounded_rectangle((m, s * 0.22, s - m, s * 0.78), radius=s * 0.1, outline=color, width=w)
+        r = s * 0.1
+        cx, cy = m + s * 0.2, s / 2
+        d.ellipse((cx - r, cy - r, cx + r, cy + r), fill=color)
+        d.line((s * 0.5, s * 0.42, s - m - s * 0.12, s * 0.42), fill=color, width=w)
+        d.line((s * 0.5, s * 0.58, s - m - s * 0.25, s * 0.58), fill=color, width=w)
+    elif name == "reset":  # circular arrow
+        d.arc((m, m, s - m, s - m), 40, 330, fill=color, width=w)
+        tip = (s - m - w * 0.2, s * 0.32)
+        d.polygon([(tip[0] - s * 0.16, tip[1] - s * 0.02), (tip[0] + s * 0.04, tip[1] - s * 0.2),
+                   (tip[0] + s * 0.06, tip[1] + s * 0.06)], fill=color)
     elif name == "search":
         r = (s - 2 * m) * 0.36
         cx = cy = m + r

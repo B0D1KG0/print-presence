@@ -11,6 +11,7 @@ Discord Rich Presence for 3D printers: your friends see what you're printing, th
 <p>
   <img src="docs/home-en.png" width="760" alt="Home tab: Discord preview and print progress"><br>
   <img src="docs/settings-en.png" width="760" alt="Settings tab with automatic printer discovery">
+  <br><img src="docs/constructor-en.png" width="760" alt="Rich Presence constructor with a live preview">
 </p>
 
 Supports **Bambu Lab** printers (tested on P1S) over the local network. Other printers can be added as separate modules in `print_presence/printers/`.
@@ -21,6 +22,7 @@ Supports **Bambu Lab** printers (tested on P1S) over the local network. Other pr
 
 - Status in Discord: printing / preparing / paused / finished / failed / idle, file name, layer `87/240`, percent, countdown to the end; filament (`PLA Basic · Black`) and temperatures on hover
 - **Finds printers on the network automatically**: IP, serial number and model — you only type the Access Code
+- **Rich Presence constructor**: write your own status lines with variables and see a live preview — changes reach Discord within seconds, no restart needed
 - **Several printers** (print farm): Discord shows the one that is printing right now
 - Printer picture in Discord matches your model (X1, P1S, P1P, A1, A1 mini, H2D)
 - Dashboard with a card per printer: photo, progress ring, layer, time left, filament
@@ -59,6 +61,23 @@ Settings are saved to `%APPDATA%\PrintPresence\settings.json` (portable version:
 - **Launch with Windows**: the app starts minimised in the tray and turns the status on by itself.
 - "Name in Discord" is shown when hovering the picture in your status; leave it empty to use the printer model. The title after "Playing" is always the Discord application name.
 - The **“Get Print Presence”** button in your status is visible to other people only (Discord never shows your own buttons to you). You can turn it off.
+
+## Rich Presence constructor
+
+The **Constructor** tab lets you write every line of the status yourself. Turn on **Own status template** and type, e.g. `🖨 {status}[: {job}]`.
+
+- `{name}` is replaced with a value; a part in `[square brackets]` disappears when a value inside it is empty — `[ · {progress}]` is shown only while printing.
+- Click a variable chip to insert it into the selected line. The preview on the right shows sample states (printing, paused, done, idle) or the real printer.
+- While the status is running, every change is sent to Discord within a few seconds (Discord allows about 5 updates per 20 seconds).
+
+| Variable | Example | | Variable | Example |
+|---|---|---|---|---|
+| `{status}` | Printing | | `{filament}` | PLA Basic · Black |
+| `{job}` | Benchy.3mf | | `{material}` / `{color}` | PLA Basic / Black |
+| `{layer}` | Layer 87/240 | | `{nozzle}` / `{bed}` | 220°C / 65°C |
+| `{layer_num}` / `{total_layers}` | 87 / 240 | | `{temps}` | Nozzle 220°C · Bed 65°C |
+| `{progress}` | 42% | | `{printer}` | Bambu Lab P1S |
+| `{remaining}` / `{eta}` | 1h 23m / 18:45 | | | |
 
 ## Own Discord application (optional)
 
